@@ -1,4 +1,7 @@
+blockExoticSubdeps: false
 minimumReleaseAgeExclude:
   - mineflayer@4.39.0
 allowBuilds:
   gl: true
+overrides:
+  minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.1/minecraft-data-3.116.0.tgz
