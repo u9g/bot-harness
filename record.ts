@@ -98,6 +98,25 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   follow()
   bot.on('move', follow)
 
+  // Warm up before the first frame: prismarine-viewer meshes chunks and uploads
+  // the block atlas asynchronously, so a recording that starts at t0 opens on
+  // blank sky with untextured entity boxes and missing-texture markers. Render
+  // in a loop until the atlas is up, some sections are meshed and none are still
+  // outstanding, then settle a moment for entity skins, before piping any frame.
+  const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
+  const w = viewer.world as { material: { map: unknown }, sectionMeshs: Record<string, unknown>, sectionsOutstanding?: Set<unknown> }
+  const warmupDeadline = performance.now() + 10_000
+  while (performance.now() < warmupDeadline) {
+    viewer.update()
+    renderer.render(viewer.scene, viewer.camera)
+    const outstanding = w.sectionsOutstanding ? w.sectionsOutstanding.size : 0
+    if (w.material.map && Object.keys(w.sectionMeshs).length > 0 && outstanding === 0) break
+    await sleep(50)
+  }
+  // A few more ticks give entity textures (player skins fetched over http) and
+  // the atlas a moment to land before recording starts.
+  for (let i = 0; i < 12; i++) { viewer.update(); renderer.render(viewer.scene, viewer.camera); await sleep(40) }
+
   const raw = ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`]
   const video = ffmpeg([...raw, '-r', String(fps), '-i', 'pipe:0', '-vf', 'vflip', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', file])
 
