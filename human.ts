@@ -1,9 +1,8 @@
-// Human-like locomotion. mineflayer-pathfinder plans the route; a per-tick controller decides how it is
-// walked: the head turns with a mouse-like velocity profile, the body steers by pure pursuit along the
-// smoothed route, sprint and sprint-jumps come in with human delays and rates, and the final approach
-// coasts to a stop instead of snapping to the block centre.
+// Player-like locomotion over mineflayer-pathfinder routes. Rotation is sent only inside a mouse gesture,
+// the body follows the string-pulled route by pure pursuit, and a walk ends by coasting, never by a snap
+// to the block centre.
 //
-// Calibrated against Jartex lobby players (2026-09-06, 48 players walking spawn -> NPC row):
+// Calibration targets (48 Jartex lobby players, 2026-09-06, spawn -> NPC row):
 //   head turn per 100 ms while moving: p25 8°, med 14°, p75 24°, p90 44°, p99 107°
 //   head turn per 100 ms while still:  med 20°, p90 354° (snap turns)
 //   spawn -> first step: med 2.5 s (p10 1.2, p75 5.5); first step -> sprint: 25% immediate, med 0.2 s
@@ -15,8 +14,7 @@ import { Vec3 } from 'vec3'
 
 const DEG = Math.PI / 180
 const TICK = 0.05
-// Yaw/pitch change per mouse count at the default 50% sensitivity. Rotations stay on this grid so the
-// deltas share the gcd a real mouse produces.
+// Yaw/pitch per mouse count at the default 50% sensitivity; every rotation sent is a multiple of it.
 const SENS = 0.15 * DEG
 
 export interface Personality {
@@ -106,8 +104,8 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
   let targetYaw: number | null = null
   let targetPitch: number | null = null
   let pitchNoise = 0
-  // One mouse gesture: a minimum-jerk sweep of fixed duration from where the head was to where the
-  // target was when the hand started moving. Between gestures the head does not move at all.
+  // A gesture is a fixed-duration minimum-jerk sweep from the head's start to the target's position at
+  // gesture start. The head does not move outside a gesture.
   interface Gesture { ticks: number, total: number, y0: number, p0: number, ay: number, ap: number }
   let gesture: Gesture | null = null
   let glanceUntil = 0
@@ -117,6 +115,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
     goal: Vec3
     route: Vec3[]     // waypoints at block centres, y = feet level
     idx: number       // next waypoint
+    complete: boolean // the route ends at the goal rather than at the closest reachable point
     radius: number
     startedAt: number
     firstStepAt: number
@@ -125,6 +124,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
     sprintAt: number
     faceAt?: Vec3
     replans: number
+    replanning: boolean
     resolve: () => void
     reject: (e: Error) => void
     timer: NodeJS.Timeout
@@ -145,12 +145,34 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
     return m
   }
 
-  // Block-centre waypoints from the planner, then string-pulled: a waypoint is dropped when the segment
-  // that skips it is flat, has floor under every sample, and is clear at feet and head for the body width.
-  function planRoute (goal: Vec3): Vec3[] | null {
-    const goalNode = new goals.GoalNear(goal.x, goal.y, goal.z, 0.5)
-    const res = bot.pathfinder.getPathTo(movements(), goalNode, 5000)
-    if (res.status === 'noPath' || res.path.length === 0) return null
+  // Waypoints are block centres. A waypoint is dropped only when the segment skipping it is flat, floored
+  // under every sample, and clear at feet and head across the body width.
+  // Feet in the goal's block column, within a block of its level.
+  class GoalBlock extends goals.Goal {
+    private readonly x: number
+    private readonly y: number
+    private readonly z: number
+    constructor (x: number, y: number, z: number) { super(); this.x = x; this.y = y; this.z = z }
+    heuristic (node: { x: number, y: number, z: number }): number { return Math.hypot(this.x - node.x, this.z - node.z) + Math.abs(this.y - node.y) }
+    isEnd (node: { x: number, y: number, z: number }): boolean { return node.x === this.x && node.z === this.z && Math.abs(node.y - this.y) <= 1 }
+  }
+
+  interface Plan { route: Vec3[], complete: boolean }
+
+  // Each search slice holds the event loop for at most one tick's thinking. A search that ends without
+  // reaching the goal yields the route to its closest node; the walk fails at that route's end.
+  async function planRoute (goal: Vec3): Promise<Plan | null> {
+    const goalNode = new GoalBlock(Math.floor(goal.x), Math.floor(goal.y), Math.floor(goal.z))
+    const search = bot.pathfinder.getPathFromTo(movements(), bot.entity.position, goalNode, { timeout: 5000, tickTimeout: 40 })
+    let res: any = null
+    for (;;) {
+      const step = search.next()
+      if (step.value) res = step.value.result
+      if (step.done || res.status !== 'partial') break
+      await new Promise(resolve => setImmediate(resolve))
+    }
+    if (res === null || res.path.length === 0) return null
+    const complete = res.status === 'success'
     const start = bot.entity.position.clone()
     const pts: Vec3[] = [start]
     for (const m of res.path as Array<{ x: number, y: number, z: number }>) {
@@ -158,7 +180,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
       if (p.y === start.y && horiz(p.minus(start)) < 0.8) continue
       pts.push(p)
     }
-    pts.push(goal.clone())
+    if (complete) pts.push(goal.clone())
     const out: Vec3[] = [pts[0]]
     let i = 0
     while (i < pts.length - 1) {
@@ -167,7 +189,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
       out.push(pts[j])
       i = j
     }
-    return out
+    return { route: out, complete }
   }
 
   function solid (p: Vec3): boolean {
@@ -222,22 +244,20 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
     return d
   }
 
-  // A hand on the mouse only while there is something to do: idle players send no rotation at all.
+  // No rotation is sent while there is no target.
   function stepHead (moving: boolean): void {
     const ty = targetYaw === null ? yaw : targetYaw + (Date.now() < glanceUntil ? glanceOffset : 0)
     const tp = targetPitch === null ? pitch : targetPitch + pitchNoise
     if (gesture === null) {
       const yawErr = wrapAngle(ty - yaw)
       const pitchErr = tp - pitch
-      // Precise aiming (a look order, the final approach) tolerates almost nothing; steering while
-      // walking waits until the route has drifted a few degrees off, then corrects in one movement.
+      // A look order and the final approach tolerate 0.2°; steering while walking tolerates `deadband`.
       const tol = walk !== null && targetYaw !== null && !(walk.faceAt && walkDistance(walk) < 2.5) ? personality.deadband : 0.2 * DEG
       if (Math.abs(yawErr) < tol && Math.abs(pitchErr) < Math.max(tol, 0.2 * DEG)) { lastRotationDelta = 0; return }
       const amp = Math.max(Math.abs(yawErr), Math.abs(pitchErr))
-      // Duration grows with the square root of the amplitude, as hand movements do; snap turns while
-      // standing are quicker than corrections while walking.
+      // Duration grows with the square root of the amplitude; a standing turn takes 0.6x a walking one.
       const secs = (0.08 + 0.3 * Math.sqrt(amp / (90 * DEG))) * (moving ? 1 : 0.6) * personality.turnTime
-      // Each gesture lands a little off its mark, more so for larger turns.
+      // A gesture lands up to 6% of its yaw off the mark.
       const bias = (r() - 0.5) * 0.12 * yawErr
       gesture = { ticks: 0, total: Math.max(2, Math.round(secs / TICK)), y0: yaw, p0: pitch, ay: yawErr - bias, ap: pitchErr }
     }
@@ -248,9 +268,9 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
     yaw = g.y0 + g.ay * frac
     pitch = Math.max(-89 * DEG, Math.min(89 * DEG, g.p0 + g.ap * frac))
     if (t >= 1) { gesture = null; yaw = wrapAngle(yaw) }
-    // Ornstein-Uhlenbeck drift on pitch while walking: the mouse is never held perfectly still.
+    // Ornstein-Uhlenbeck pitch noise applies only while walking.
     if (walk) pitchNoise += (-pitchNoise / 2.5) * TICK + 2 * DEG * Math.sqrt(TICK) * (r() * 2 - 1) * 1.7
-    // Hand tremor while the mouse is in motion, below one mouse count most ticks.
+    // Jitter applies only during a gesture and stays below one mouse count most ticks.
     const jitter = gesture !== null ? 0.08 * DEG : 0
     const qy = quantize(yaw + (r() - 0.5) * jitter)
     const qp = quantize(pitch + (r() - 0.5) * jitter)
@@ -281,7 +301,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
 
   function tickWalk (w: Walk, now: number, pos: Vec3, vel: Vec3, speed: number): void {
     if (now - w.startedAt < personality.reaction * 1000) return
-    // Advance past waypoints the bot has reached or walked beyond.
+    // A waypoint is passed within 0.6 blocks, or within 1.2 blocks once the bot is beyond it along the next segment.
     while (w.idx < w.route.length - 1) {
       const wp = w.route[w.idx]
       const next = w.route[w.idx + 1]
@@ -303,7 +323,10 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
       bot.setControlState('left', false)
       bot.setControlState('right', false)
       bot.setControlState('sprint', false)
-      if (speed < 0.02) finishWalk(w)
+      if (speed < 0.02) {
+        if (w.complete || horiz(w.goal.minus(pos)) <= w.radius + 1) finishWalk(w)
+        else failWalk(w, new Error(`no path to ${w.goal}`))
+      }
       return
     }
 
@@ -318,12 +341,12 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
 
     const err = wrapAngle(wantYaw - yaw)
     const aerr = Math.abs(err)
-    // Facing far enough off: turn first, as a player does when the target is behind them.
+    // Forward is held only while the heading error is under 50° (75° while moving).
     const canWalk = aerr < (speed > 0.1 ? 75 : 50) * DEG
     let left = false
     let right = false
     if (canWalk && aerr > 20 * DEG && personality.strafe > 0 && r() < personality.strafe * TICK * 4) {
-      // Strafe holds for a few ticks via the sticky control state below.
+      // A strafe holds for 250-550 ms through strafeUntil.
       strafeUntil = now + 250 + 300 * r()
       strafeDir = err > 0 ? 'left' : 'right'
     }
@@ -343,15 +366,19 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
       else if (wantSprint && personality.jumpRate > 0 && flatAhead && remaining > 4 && headroom(pos) && r() < personality.jumpRate * TICK / 0.55) jump()
     }
 
-    // Stuck: no progress for 1.5 s -> hop; 4 s -> re-plan; three re-plans -> give up.
+    // No progress for 1.5 s hops; 4 s re-plans, one in flight at a time; more than three re-plans fails the walk.
     if (now - w.lastProgressAt > 1500 && now - stuckJumpAt > 1200 && bot.entity.onGround) { stuckJumpAt = now; jump() }
-    if (now - w.lastProgressAt > 4000) {
+    if (now - w.lastProgressAt > 4000 && !w.replanning) {
       if (++w.replans > 3) { failWalk(w, new Error('stuck')); return }
-      const route = planRoute(w.goal)
-      if (!route) { failWalk(w, new Error('no path on re-plan')); return }
-      w.route = route; w.idx = 0; w.lastProgressAt = now; w.bestDist = Infinity
-      human.route = route
-      sprintReleaseUntil = now + 600
+      w.replanning = true
+      void planRoute(w.goal).then(plan => {
+        w.replanning = false
+        if (walk !== w) return
+        if (!plan) { failWalk(w, new Error('no path on re-plan')); return }
+        w.route = plan.route; w.complete = plan.complete; w.idx = 0; w.lastProgressAt = Date.now(); w.bestDist = Infinity
+        human.route = plan.route
+        sprintReleaseUntil = Date.now() + 600
+      })
     }
   }
 
@@ -412,16 +439,22 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
     })
   }
 
-  function walkTo (goal: Vec3, o: WalkOpts = {}): Promise<void> {
+  let planSeq = 0
+
+  async function walkTo (goal: Vec3, o: WalkOpts = {}): Promise<void> {
     if (walk) failWalk(walk, new Error('superseded'))
-    const route = planRoute(goal)
-    if (!route) return Promise.reject(new Error(`no path to ${goal}`))
-    return new Promise<void>((resolve, reject) => {
+    const seq = ++planSeq
+    const plan = await planRoute(goal)
+    if (seq !== planSeq) throw new Error('superseded')
+    if (!plan) throw new Error(`no path to ${goal}`)
+    const { route, complete } = plan
+    return await new Promise<void>((resolve, reject) => {
       const now = Date.now()
       const w: Walk = {
         goal: goal.clone(),
         route,
         idx: 0,
+        complete,
         radius: o.radius ?? personality.stopRadius,
         startedAt: now,
         firstStepAt: 0,
@@ -430,6 +463,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
         sprintAt: Infinity,
         faceAt: o.faceAt,
         replans: 0,
+        replanning: false,
         resolve,
         reject,
         timer: setTimeout(() => failWalk(w, new Error('walk timed out')), o.timeout ?? 60_000)
@@ -453,7 +487,7 @@ export function createHuman (bot: Bot, opts: HumanOpts = {}): Human {
   }
 
   bot.on('physicsTick', tick)
-  // A server teleport resets the head to whatever the server chose.
+  // A server teleport sets the head to the entity's rotation and cancels the gesture.
   bot.on('forcedMove', () => { yaw = bot.entity.yaw; pitch = bot.entity.pitch; gesture = null })
   return human
 }
