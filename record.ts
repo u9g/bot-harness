@@ -68,7 +68,10 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   const renderer = new THREE.WebGLRenderer({ canvas, context: gl })
   renderer.setSize(width, height, false)
   const destroyGl = (): void => {
-    renderer.dispose()
+    // renderer.dispose() drives three's animation.stop(), which calls
+    // cancelAnimationFrame on a null context headless; the STACKGL destroy below
+    // frees the whole GL context regardless, so a throw here is harmless.
+    try { renderer.dispose() } catch {}
     gl.getExtension('STACKGL_destroy_context')?.destroy()
   }
 
@@ -132,10 +135,15 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
       timer = null
       bot.off('move', follow)
       worldView.removeListenersFromBot(bot)
-      viewer.dispose()
-      destroyGl()
+      // Finalize the video before tearing anything down: closing ffmpeg's stdin
+      // is what writes the moov atom, so it must happen even if GL teardown throws.
       video.proc.stdin!.end()
-      await video.done
+      try {
+        await video.done
+      } finally {
+        try { viewer.dispose() } catch {}
+        destroyGl()
+      }
       return file
     }
   }
