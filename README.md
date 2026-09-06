@@ -18,6 +18,8 @@ Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `require`, `s
 
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
+For a local test server: grab the 26.1 server jar from Mojang's version manifest, set `online-mode=false` and `eula=true`, and run it with Java 25 or newer.
+
 Multiple bots: `-n NAME` on every command. Extra `--key=value` flags on `start` are passed straight into `createBot` options. Files (pid, socket, log) live in `~/.mcbot`, override with `MCBOT_DIR`.
 
 `-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon.
