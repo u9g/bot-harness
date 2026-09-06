@@ -15,8 +15,11 @@ function usage (): never {
   mcbot start [-n NAME] [-d] [--host H] [--port P] [-u USERNAME] [-v VERSION=26.1] [--auth offline|microsoft] [--key=value ...]
               runs until the bot process exits (ctrl-c stops it); -d detaches instead
   mcbot exec  [-n NAME] [-t TIMEOUT_MS] <code>   code is an expression or async fn body
-                                                 in scope: bot, mineflayer, Vec3, goals, Movements, require, state, reconnect, log
+                                                 in scope: bot, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
   mcbot exec  [-n NAME] -f FILE | -              read code from file / stdin
+  mcbot record [-n NAME] start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1]
+  mcbot record [-n NAME] snapshot [-o FILE.png]  PNG of the latest recorded frame
+  mcbot record [-n NAME] stop                    finish the video; prints its path
   mcbot stop  [-n NAME]
   mcbot status [-n NAME]
   mcbot logs  [-n NAME] [-f]
@@ -70,7 +73,7 @@ function start (): void {
     version: str(v) ?? str(version) ?? '26.1',
     ...extra
   }
-  const daemonOpts: DaemonOpts = { bot, sock: files.sock, pidFile: files.pidFile }
+  const daemonOpts: DaemonOpts = { name, dir: DIR, bot, sock: files.sock, pidFile: files.pidFile }
   const out = fs.openSync(files.logFile, 'a')
   const child = spawn(process.execPath, [path.join(import.meta.dirname, 'daemon.ts')], {
     detached,
@@ -101,6 +104,26 @@ async function exec (): Promise<void> {
   if (str(flags.f)) code = fs.readFileSync(str(flags.f)!, 'utf8')
   else if (rest[0] === '-' || rest.length === 0) code = fs.readFileSync(0, 'utf8')
   else code = rest.join(' ')
+  return send(code)
+}
+
+/** Sugar over exec for the `record` scope object. */
+function record (): Promise<void> {
+  const out = str(flags.o) ?? str(flags.out)
+  const file = out ? JSON.stringify(path.resolve(out)) : 'undefined'
+  switch (rest[0]) {
+    case 'start': {
+      const num = (k: string): number | undefined => str(flags[k]) ? Number(flags[k]) : undefined
+      const o = { width: num('width'), height: num('height'), fps: num('fps'), viewDistance: num('dist'), numWorkers: num('workers') }
+      return send(`record.start(${file}, ${JSON.stringify(o)})`)
+    }
+    case 'snapshot': return send(`record.snapshot(${file})`)
+    case 'stop': return send('record.stop()')
+    default: usage()
+  }
+}
+
+async function send (code: string): Promise<void> {
   const c = await connect()
   const req: ExecRequest = { id: 1, code, timeout: str(flags.t) ? Number(flags.t) : undefined }
   c.write(JSON.stringify(req) + '\n')
@@ -143,5 +166,5 @@ function list (): void {
   }
 }
 
-const commands: Record<string, () => void | Promise<void>> = { start, exec, stop, status, logs, list }
+const commands: Record<string, () => void | Promise<void>> = { start, exec, record, stop, status, logs, list }
 void (commands[cmd] ?? usage)()

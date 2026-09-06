@@ -1,12 +1,14 @@
 // Runs in the detached process. Owns one bot and a unix socket that evals code against it.
 import net from 'node:net'
 import fs from 'node:fs'
+import path from 'node:path'
 import util from 'node:util'
 import { createRequire } from 'node:module'
 import mineflayer, { type Bot, type BotOptions } from 'mineflayer'
 import pathfinderPkg from 'mineflayer-pathfinder'
 import { Vec3 } from 'vec3'
 import type { DaemonOpts, ExecRequest, ExecReply } from './protocol.ts'
+import { startRecording, type RecordOpts, type Recording } from './record.ts'
 
 const require = createRequire(import.meta.url)
 const { pathfinder, Movements, goals } = pathfinderPkg
@@ -33,14 +35,39 @@ function createBot (): Bot {
 }
 
 function reconnect (newOpts: Partial<BotOptions> = {}): string {
+  if (recording) void record.stop()
   try { bot.end('reconnect') } catch {}
   Object.assign(botOpts, newOpts)
   bot = createBot()
   return 'reconnecting'
 }
 
+// At most one recording per bot at a time.
+let recording: Recording | null = null
+const stamp = (): string => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+const record = {
+  async start (file = path.join(opts.dir, `${opts.name}-${stamp()}.mp4`), recordOpts?: RecordOpts): Promise<string> {
+    if (recording) throw new Error(`already recording to ${recording.file}`)
+    recording = await startRecording(bot, path.resolve(file), recordOpts)
+    log('recording', recording.file)
+    return recording.file
+  },
+  snapshot (file = path.join(opts.dir, `${opts.name}-${stamp()}.png`)): Promise<string> {
+    if (!recording) throw new Error('not recording')
+    return recording.snapshot(path.resolve(file))
+  },
+  async stop (): Promise<string> {
+    if (!recording) throw new Error('not recording')
+    const r = recording
+    recording = null
+    const file = await r.stop()
+    log('recorded', file)
+    return file
+  }
+}
+
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
-const SCOPE = { bot: () => bot, mineflayer, Vec3, goals, Movements, require, state, reconnect, log }
+const SCOPE = { bot: () => bot, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
 const SCOPE_NAMES = Object.keys(SCOPE)
 
 type ExecFn = (...args: unknown[]) => Promise<unknown>

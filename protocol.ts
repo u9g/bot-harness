@@ -9,6 +9,9 @@ export interface BotOpts {
 }
 
 export interface DaemonOpts {
+  name: string
+  // Default directory for recordings when a script gives no path.
+  dir: string
   bot: BotOpts
   sock: string
   pidFile: string
