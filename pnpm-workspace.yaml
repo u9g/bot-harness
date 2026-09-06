@@ -2,3 +2,4 @@ minimumReleaseAgeExclude:
   - mineflayer@4.39.0
 allowBuilds:
   gl: true
+  canvas: true

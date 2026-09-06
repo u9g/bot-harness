@@ -10,11 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "gl": "9.0.0-rc.10",
+    "canvas": "^3.2.3",
     "mineflayer": "^4.39.0",
     "mineflayer-pathfinder": "^2.4.5",
-    "prismarine-viewer": "https://github.com/u9g/prismarine-viewer/releases/download/v1.33.0-host26.1/prismarine-viewer-1.33.0.tgz",
-    "three": "0.128.0",
+    "node-canvas-webgl": "github:PrismarineJS/node-canvas-webgl",
+    "prismarine-viewer": "https://github.com/u9g/prismarine-viewer/releases/download/v1.33.0-host26.2/prismarine-viewer-1.33.0.tgz",
     "vec3": "^0.1.7"
   },
   "devDependencies": {
