@@ -4,10 +4,12 @@ import fs from 'node:fs'
 import util from 'node:util'
 import { createRequire } from 'node:module'
 import mineflayer, { type Bot, type BotOptions } from 'mineflayer'
+import pathfinderPkg from 'mineflayer-pathfinder'
 import { Vec3 } from 'vec3'
 import type { DaemonOpts, ExecRequest, ExecReply } from './protocol.ts'
 
 const require = createRequire(import.meta.url)
+const { pathfinder, Movements, goals } = pathfinderPkg
 
 const opts: DaemonOpts = JSON.parse(process.env.MCBOT_OPTS!)
 const botOpts = opts.bot as BotOptions
@@ -20,6 +22,7 @@ let bot: Bot = createBot()
 
 function createBot (): Bot {
   const b = mineflayer.createBot(botOpts)
+  b.loadPlugin(pathfinder)
   b.on('login', () => log('login', b.username))
   b.on('spawn', () => log('spawn', b.entity.position))
   b.on('kicked', r => log('kicked', typeof r === 'string' ? r : JSON.stringify(r)))
@@ -37,7 +40,7 @@ function reconnect (newOpts: Partial<BotOptions> = {}): string {
 }
 
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
-const SCOPE = { bot: () => bot, mineflayer, Vec3, require, state, reconnect, log }
+const SCOPE = { bot: () => bot, mineflayer, Vec3, goals, Movements, require, state, reconnect, log }
 const SCOPE_NAMES = Object.keys(SCOPE)
 
 type ExecFn = (...args: unknown[]) => Promise<unknown>

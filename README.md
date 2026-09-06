@@ -11,10 +11,11 @@ pnpm install
 ./mcbot.ts exec 'bot.entity.position'                                 # expression -> printed with util.inspect
 ./mcbot.ts exec 'bot.chat("hi"); await bot.waitForTicks(20); return bot.health'   # async fn body
 ./mcbot.ts exec -f script.js                                          # or `-` for stdin
+./mcbot.ts exec 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
 ./mcbot.ts stop
 ```
 
-Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
+Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
 
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
