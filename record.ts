@@ -52,7 +52,7 @@ function ffmpeg (args: string[]): { proc: ChildProcess, done: Promise<void> } {
 }
 
 export async function startRecording (bot: Bot, file: string, opts: RecordOpts = {}): Promise<Recording> {
-  const { width = 640, height = 360, fps = 10, viewDistance = 4, numWorkers = 1 } = opts
+  const { width = 640, height = 360, fps = 20, viewDistance = 4, numWorkers = 1 } = opts
   await ensureDisplay(width, height)
   if (!bot.entity) await new Promise<void>(resolve => bot.once('spawn', resolve))
 

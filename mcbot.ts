@@ -17,7 +17,7 @@ function usage (): never {
   mcbot exec  [-n NAME] [-t TIMEOUT_MS] <code>   code is an expression or async fn body
                                                  in scope: bot, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
   mcbot exec  [-n NAME] -f FILE | -              read code from file / stdin
-  mcbot record [-n NAME] start [-o FILE.mp4] [--width 640] [--height 360] [--fps 10] [--dist 4] [--workers 1]
+  mcbot record [-n NAME] start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1]
   mcbot record [-n NAME] snapshot [-o FILE.png]  PNG of the latest recorded frame
   mcbot record [-n NAME] stop                    finish the video; prints its path
   mcbot stop  [-n NAME]
