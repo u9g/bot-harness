@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// mcbot start|exec|stop|status|logs|list — see usage()
+// mcbot start|exec|record|stop|status|logs|list — see usage()
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -12,19 +12,20 @@ fs.mkdirSync(DIR, { recursive: true })
 
 function usage (): never {
   console.error(`usage:
-  mcbot start [-n NAME] [-d] [--host H] [--port P] [-u USERNAME] [-v VERSION=26.1] [--auth offline|microsoft] [--key=value ...]
+  mcbot start ID [-d] [--host H] [--port P] [-u USERNAME] [-v VERSION=26.1] [--auth offline|microsoft] [--key=value ...]
               runs until the bot process exits (ctrl-c stops it); -d detaches instead
-  mcbot exec  [-n NAME] [-t TIMEOUT_MS] <code>   code is an expression or async fn body
-                                                 in scope: bot, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
-  mcbot exec  [-n NAME] -f FILE | -              read code from file / stdin
-  mcbot record [-n NAME] start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1]
-  mcbot record [-n NAME] snapshot [-o FILE.png]  PNG of the latest recorded frame
-  mcbot record [-n NAME] stop                    finish the video; prints its path
-  mcbot stop  [-n NAME]
-  mcbot status [-n NAME]
-  mcbot logs  [-n NAME] [-f]
-  mcbot list
-default NAME: bot. Files live in ${DIR}.`)
+  mcbot exec  ID [-t TIMEOUT_MS] <code>   code is an expression or async fn body
+                                          in scope: bot, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
+  mcbot exec  ID -f FILE | -              read code from file / stdin
+  mcbot record ID start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1]
+  mcbot record ID snapshot [-o FILE.png]  PNG of the latest recorded frame
+  mcbot record ID stop                    finish the video; prints its path
+  mcbot stop   ID
+  mcbot status ID
+  mcbot logs   ID [-f]
+  mcbot list                              every bot in ${DIR} with its server
+ID names one bot: 1-29 characters from A-Z a-z 0-9 _ -, chosen at start and given to every other command.
+Files live in ${DIR}.`)
   process.exit(2)
 }
 
@@ -48,22 +49,35 @@ const str = (v: string | true | undefined): string | undefined => typeof v === '
 
 const [cmd, ...argv] = process.argv.slice(2)
 const { flags, rest } = parse(argv)
-const name = str(flags.n) ?? str(flags.name) ?? 'bot'
-const files = {
-  sock: path.join(DIR, `${name}.sock`),
-  pidFile: path.join(DIR, `${name}.pid`),
-  logFile: path.join(DIR, `${name}.log`)
+// Every command but list addresses one bot by the id given at start: several shells share DIR,
+// so nothing is ever picked by default.
+function botId (): string {
+  const id = rest.shift()
+  if (id === undefined) { console.error(`${cmd}: missing bot ID`); usage() }
+  if (!/^[\w-]{1,29}$/.test(id)) { console.error(`bad bot ID ${JSON.stringify(id)}: 1-29 characters from A-Z a-z 0-9 _ -`); process.exit(2) }
+  return id
 }
+const name = ['start', 'exec', 'record', 'stop', 'status', 'logs'].includes(cmd) ? botId() : ''
+const files = filesFor(name)
 
-function pid (): number | null {
-  try { return Number(fs.readFileSync(files.pidFile, 'utf8')) } catch { return null }
+function filesFor (id: string): { sock: string, pidFile: string, logFile: string, infoFile: string } {
+  return {
+    sock: path.join(DIR, `${id}.sock`),
+    pidFile: path.join(DIR, `${id}.pid`),
+    logFile: path.join(DIR, `${id}.log`),
+    infoFile: path.join(DIR, `${id}.json`)
+  }
 }
+function pidOf (id: string): number | null {
+  try { return Number(fs.readFileSync(filesFor(id).pidFile, 'utf8')) } catch { return null }
+}
+const pid = (): number | null => pidOf(name)
 function alive (p: number): boolean { try { process.kill(p, 0); return true } catch { return false } }
 
 function start (): void {
   const p = pid()
   if (p && alive(p)) { console.error(`${name} already running (pid ${p})`); process.exit(1) }
-  const { n, name: _n, d, host, port, u, username, v, version, auth, ...extra } = flags
+  const { d, host, port, u, username, v, version, auth, ...extra } = flags
   const detached = d !== undefined
   const bot: BotOpts = {
     host: str(host) ?? 'localhost',
@@ -81,6 +95,7 @@ function start (): void {
     env: { ...process.env, MCBOT_OPTS: JSON.stringify(daemonOpts) }
   })
   fs.writeFileSync(files.pidFile, String(child.pid))
+  fs.writeFileSync(files.infoFile, JSON.stringify({ host: bot.host, port: bot.port, username: bot.username, version: bot.version, started: new Date().toISOString() }))
   console.log(`started ${name} pid ${child.pid} -> ${bot.host}:${bot.port} as ${bot.username}\nlog: ${files.logFile}`)
   if (detached) { child.unref(); return }
   // foreground: stream daemon output here and to the log file, forward ctrl-c, exit when it exits
@@ -95,7 +110,7 @@ function connect (): Promise<net.Socket> {
     const c = net.createConnection(files.sock)
     c.once('connect', () => resolve(c))
     c.once('error', (e: NodeJS.ErrnoException) =>
-      reject(new Error(`cannot connect to ${name} (${e.code}); is it started? try: mcbot status -n ${name}`)))
+      reject(new Error(`cannot connect to ${name} (${e.code}); is it started? try: mcbot status ${name}`)))
   })
 }
 
@@ -141,7 +156,7 @@ async function send (code: string): Promise<void> {
 
 function stop (): void {
   const p = pid()
-  if (!p || !alive(p)) { console.error(`${name} not running`); try { fs.unlinkSync(files.pidFile) } catch {}; process.exit(1) }
+  if (!p || !alive(p)) { console.error(`${name} not running`); for (const f of [files.pidFile, files.infoFile]) { try { fs.unlinkSync(f) } catch {} }; process.exit(1) }
   process.kill(p, 'SIGTERM')
   console.log(`sent SIGTERM to ${name} (pid ${p})`)
 }
@@ -161,8 +176,13 @@ function logs (): void {
 
 function list (): void {
   for (const f of fs.readdirSync(DIR).filter(f => f.endsWith('.pid'))) {
-    const n = f.slice(0, -4); const p = Number(fs.readFileSync(path.join(DIR, f), 'utf8'))
-    console.log(`${n}: ${alive(p) ? `running pid ${p}` : 'stale'}`)
+    const id = f.slice(0, -4); const p = pidOf(id)!
+    let target = ''
+    try {
+      const info = JSON.parse(fs.readFileSync(filesFor(id).infoFile, 'utf8'))
+      target = `  -> ${info.host}:${info.port} as ${info.username} (${info.version}, since ${info.started})`
+    } catch {}
+    console.log(`${id}: ${alive(p) ? `running pid ${p}` : 'stale'}${target}`)
   }
 }
 

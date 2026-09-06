@@ -6,16 +6,16 @@ Runs directly on Node 24 (type stripping), no build step. Defaults to Minecraft 
 
 ```sh
 pnpm install
-./mcbot.ts start --host localhost --port 25565 -u Tester   # stays attached until the bot exits; ctrl-c stops it
-./mcbot.ts start -d ...                                               # or detach; then use `logs -f` to watch
-./mcbot.ts exec 'bot.entity.position'                                 # expression -> printed with util.inspect
-./mcbot.ts exec 'bot.chat("hi"); await bot.waitForTicks(20); return bot.health'   # async fn body
-./mcbot.ts exec -f script.js                                          # or `-` for stdin
-./mcbot.ts exec 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
-./mcbot.ts record start                                               # first-person mp4 of what the bot sees
-./mcbot.ts record snapshot -o now.png                                 # PNG of the latest frame
-./mcbot.ts record stop                                                # prints the mp4 path
-./mcbot.ts stop
+./mcbot.ts start t1 --host localhost --port 25565 -u Tester   # stays attached until the bot exits; ctrl-c stops it
+./mcbot.ts start t1 -d ...                                            # or detach; then use `logs t1 -f` to watch
+./mcbot.ts exec t1 'bot.entity.position'                              # expression -> printed with util.inspect
+./mcbot.ts exec t1 'bot.chat("hi"); await bot.waitForTicks(20); return bot.health'   # async fn body
+./mcbot.ts exec t1 -f script.js                                       # or `-` for stdin
+./mcbot.ts exec t1 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
+./mcbot.ts record t1 start                                            # first-person mp4 of what the bot sees
+./mcbot.ts record t1 snapshot -o now.png                              # PNG of the latest frame
+./mcbot.ts record t1 stop                                             # prints the mp4 path
+./mcbot.ts stop t1
 ```
 
 Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
@@ -30,7 +30,7 @@ Needs `ffmpeg` on PATH and, on Linux, an X display for headless-gl (an Xvfb is s
 
 For a local test server: grab the 26.1 server jar from Mojang's version manifest, set `online-mode=false` and `eula=true`, and run it with Java 25 or newer.
 
-Multiple bots: `-n NAME` on every command. Extra `--key=value` flags on `start` are passed straight into `createBot` options. Files (pid, socket, log) live in `~/.mcbot`, override with `MCBOT_DIR`.
+Every command except `list` takes the bot's ID first: `start` requires one (1-29 characters, letters, digits, `_`, `-`) and the other commands use it to pick which bot they talk to, so there is no default that two shells could both mean. The in-game username defaults to the ID. `mcbot list` shows every bot in the directory with its server. Extra `--key=value` flags on `start` are passed straight into `createBot` options. Files (pid, socket, log, json info) live in `~/.mcbot`, override with `MCBOT_DIR`.
 
 `-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon.
 
