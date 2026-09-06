@@ -20,6 +20,8 @@ pnpm install
 
 Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
 
+`human` walks like a player instead of like the pathfinder's executor: `await human.walkTo(new Vec3(x, y, z), { faceAt: npcEyes })` plans the route with mineflayer-pathfinder, string-pulls it, then steers by pure pursuit while the head turns in discrete mouse-like gestures, sprints after a human delay, sprint-jumps at a personal rate and coasts to a stop; `human.lookAt(point)` is one such gesture. Each bot gets a random `human.personality` (seedable through `createHuman(bot, { seed })`), calibrated on players recorded in a Jartex lobby; see the top of `human.ts` for the numbers.
+
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
 ## Recording
