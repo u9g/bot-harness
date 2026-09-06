@@ -42,7 +42,7 @@ function reconnect (newOpts: Partial<BotOptions> = {}): string {
   return 'reconnecting'
 }
 
-/** One recording at a time per bot; stopping detaches it from the bot and waits for ffmpeg. */
+// At most one recording per bot at a time.
 let recording: Recording | null = null
 const stamp = (): string => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 const record = {

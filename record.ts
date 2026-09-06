@@ -1,6 +1,3 @@
-// First-person recording of the bot's view: prismarine-viewer's core rendered
-// through headless-gl into a three.js renderer with a stub canvas (no
-// node-canvas, no DOM), frames piped raw into ffmpeg as an mp4.
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -12,22 +9,19 @@ export interface RecordOpts {
   width?: number
   height?: number
   fps?: number
-  /** Chunk radius kept meshed around the bot. */
+  // Chunk radius meshed around the bot.
   viewDistance?: number
-  /** Mesher worker threads; 0 meshes inline on the daemon's thread (no extra copy of the block data, but the bot stalls while meshing). */
+  // 0 meshes inline on the daemon thread instead of on a worker.
   numWorkers?: number
 }
 
 export interface Recording {
   file: string
-  /** Write the frame most recently sent to the video as a PNG. */
   snapshot: (file: string) => Promise<string>
-  /** Finish the video; resolves to its path once ffmpeg has exited. */
   stop: () => Promise<string>
 }
 
-// headless-gl creates its GL context through GLX, so it needs an X server even
-// with software Mesa. Start an Xvfb on :99 when there is no DISPLAY.
+// headless-gl's context comes through GLX, so an X display is required even with software Mesa.
 async function ensureDisplay (width: number, height: number): Promise<void> {
   if (process.platform !== 'linux' || process.env.DISPLAY) return
   process.env.DISPLAY = ':99'
@@ -62,15 +56,14 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
 
   const gl = createContext(width, height, { preserveDrawingBuffer: true })
   if (!gl) throw new Error('headless-gl could not create a GL context (needs Mesa and an X display)')
-  // three reads gl.canvas.width in WebGLState; headless-gl has no canvas
+  // three reads gl.canvas.width; headless-gl has no canvas, so one is stubbed.
   const canvas = { width, height, addEventListener () {}, removeEventListener () {} }
   gl.canvas = canvas
   const renderer = new THREE.WebGLRenderer({ canvas, context: gl })
   renderer.setSize(width, height, false)
   const destroyGl = (): void => {
-    // renderer.dispose() drives three's animation.stop(), which calls
-    // cancelAnimationFrame on a null context headless; the STACKGL destroy below
-    // frees the whole GL context regardless, so a throw here is harmless.
+    // renderer.dispose() throws headless (three's animation.stop() calls cancelAnimationFrame
+    // on a null context); STACKGL_destroy_context frees the context regardless.
     try { renderer.dispose() } catch {}
     gl.getExtension('STACKGL_destroy_context')?.destroy()
   }
@@ -87,8 +80,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   void worldView.init(bot.entity.position)
   worldView.listenToBot(bot)
 
-  // Set the camera directly: setFirstPersonCamera tweens it, and the tween
-  // never advances here.
+  // The viewer's camera tween never advances headless; the camera must be set directly.
   const follow = (): void => {
     const p = bot.entity.position
     viewer.camera.position.set(p.x, p.y + 1.6, p.z)
@@ -98,11 +90,8 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   follow()
   bot.on('move', follow)
 
-  // Warm up before the first frame: prismarine-viewer meshes chunks and uploads
-  // the block atlas asynchronously, so a recording that starts at t0 opens on
-  // blank sky with untextured entity boxes and missing-texture markers. Render
-  // in a loop until the atlas is up, some sections are meshed and none are still
-  // outstanding, then settle a moment for entity skins, before piping any frame.
+  // Frames before the atlas uploads and chunks mesh are blank sky. The first frame is
+  // deferred until the atlas is set, some sections are meshed, and none are outstanding.
   const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
   const w = viewer.world as { material: { map: unknown }, sectionMeshs: Record<string, unknown>, sectionsOutstanding?: Set<unknown> }
   const warmupDeadline = performance.now() + 10_000
@@ -113,8 +102,6 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
     if (w.material.map && Object.keys(w.sectionMeshs).length > 0 && outstanding === 0) break
     await sleep(50)
   }
-  // A few more ticks give entity textures (player skins fetched over http) and
-  // the atlas a moment to land before recording starts.
   for (let i = 0; i < 12; i++) { viewer.update(); renderer.render(viewer.scene, viewer.camera); await sleep(40) }
 
   const raw = ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`]
@@ -130,9 +117,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
     viewer.update()
     renderer.render(viewer.scene, viewer.camera)
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-    // The video runs at wall-clock speed: every frame slot that elapsed since
-    // the last tick gets this frame, so a slow render repeats rather than
-    // shortens the video.
+    // Output runs at wall-clock rate: every frame slot elapsed since t0 gets the latest render.
     last = Buffer.from(pixels)
     const due = Math.floor((performance.now() - t0) / frameMs) + 1
     for (; written < due; written++) video.proc.stdin!.write(last)
@@ -154,8 +139,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
       timer = null
       bot.off('move', follow)
       worldView.removeListenersFromBot(bot)
-      // Finalize the video before tearing anything down: closing ffmpeg's stdin
-      // is what writes the moov atom, so it must happen even if GL teardown throws.
+      // Closing ffmpeg's stdin writes the moov atom; it must run even if GL teardown throws.
       video.proc.stdin!.end()
       try {
         await video.done
