@@ -12,12 +12,21 @@ pnpm install
 ./mcbot.ts exec 'bot.chat("hi"); await bot.waitForTicks(20); return bot.health'   # async fn body
 ./mcbot.ts exec -f script.js                                          # or `-` for stdin
 ./mcbot.ts exec 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
+./mcbot.ts record start                                               # first-person mp4 of what the bot sees
+./mcbot.ts record snapshot -o now.png                                 # PNG of the latest frame
+./mcbot.ts record stop                                                # prints the mp4 path
 ./mcbot.ts stop
 ```
 
-Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
+Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
 
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
+
+## Recording
+
+`record start` renders the bot's first-person view with prismarine-viewer's core through headless-gl (no browser, no node-canvas) and pipes the frames to ffmpeg as an mp4; `record stop` finishes the file. Defaults are 640x360 at 10 fps with a 4-chunk view distance (`--width`, `--height`, `--fps`, `--dist`), one mesher worker thread (`--workers 0` meshes on the bot's own thread instead). Files default to `~/.mcbot/NAME-TIMESTAMP.mp4` (`-o` to choose). The video runs at wall-clock speed: a frame that renders late is repeated, not dropped.
+
+Needs `ffmpeg` on PATH and, on Linux, an X display for headless-gl (an Xvfb is started on `:99` when `DISPLAY` is unset; `apt install xvfb libgl1-mesa-dri`). The viewer is the host-object build of prismarine-viewer (PrismarineJS/prismarine-viewer#502, packed as a release tarball on u9g/prismarine-viewer) and ships assets up to 1.21.4, so start the bot with `-v 1.21.4` (or another version it supports) when you want to record; `record start` names the supported versions when asked for one it lacks.
 
 For a local test server: grab the 26.1 server jar from Mojang's version manifest, set `online-mode=false` and `eula=true`, and run it with Java 25 or newer.
 
