@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": { "mcbot": "./mcbot.ts" },
+  "bin": {
+    "mcbot": "./mcbot.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "mineflayer": "^4.39.0",
+    "mineflayer-pathfinder": "^2.4.5",
     "vec3": "^0.1.7"
   },
   "devDependencies": {

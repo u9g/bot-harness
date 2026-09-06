@@ -15,7 +15,7 @@ function usage (): never {
   mcbot start [-n NAME] [-d] [--host H] [--port P] [-u USERNAME] [-v VERSION=26.1] [--auth offline|microsoft] [--key=value ...]
               runs until the bot process exits (ctrl-c stops it); -d detaches instead
   mcbot exec  [-n NAME] [-t TIMEOUT_MS] <code>   code is an expression or async fn body
-                                                 in scope: bot, mineflayer, Vec3, require, state, reconnect, log
+                                                 in scope: bot, mineflayer, Vec3, goals, Movements, require, state, reconnect, log
   mcbot exec  [-n NAME] -f FILE | -              read code from file / stdin
   mcbot stop  [-n NAME]
   mcbot status [-n NAME]
