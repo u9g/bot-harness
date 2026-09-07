@@ -99,9 +99,9 @@ async function reconnect (newOpts: Partial<BotOptions> = {}): Promise<string> {
   void stopRecording('reconnect')
   try { bot.end('reconnect') } catch {}
   Object.assign(botOpts, newOpts)
-  const b = bot = createBot()
-  await new Promise<void>(resolve => b.once('spawn', () => { resolve() }))
-  return `reconnected as ${b.username}`
+  bot = createBot()
+  await new Promise<void>(resolve => bot.once('spawn', () => { resolve() }))
+  return `reconnected as ${bot.username}`
 }
 
 // At most one recording per bot at a time.
