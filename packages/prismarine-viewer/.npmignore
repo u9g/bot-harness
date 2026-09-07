@@ -1,0 +1,8 @@
+node_modules
+package-lock.json
+/test/*.png
+versions/
+examples/standalone/public/index.js
+examples/standalone/public/worker.js
+examples/standalone/public/textures/
+examples/standalone/public/blocksStates/
