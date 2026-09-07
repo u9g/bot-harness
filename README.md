@@ -2,7 +2,7 @@
 
 Start a mineflayer bot as a detached background process, then run code against it from the shell.
 
-Runs directly on Node 24 (type stripping), no build step. Defaults to Minecraft 26.1 (`-v` to override). To hack on mineflayer itself, `pnpm link ../mineflayer`.
+Runs directly on Node 24 (type stripping), no build step. Defaults to Minecraft 26.1 (`-v` to override). The Minecraft libraries it runs on live in `packages/` and are rebuilt by a bot (see [The stack](#the-stack)); edit them upstream, not here.
 
 ```sh
 pnpm install
@@ -42,3 +42,11 @@ Once the bot's connection is gone it keeps answering `exec` with whatever state 
 `-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon.
 
 Layout: `mcbot.ts` is the CLI, `daemon.ts` is the detached process (bot + unix socket eval server), `protocol.ts` is the newline-delimited JSON wire format between them.
+
+## The stack
+
+`packages/` holds the libraries the harness runs on (mineflayer, minecraft-data with its data submodule inlined, minecraft-protocol, protodef with its ProtoDef schemas inlined, prismarine-item, prismarine-physics, prismarine-viewer, mineflayer-pathfinder). Each is upstream `master` plus every open PR by the author in `stack/config.json`, applied as one squash per PR. The `stack` workflow rebuilds them every 5 minutes (GitHub runs the schedule late at busy times) and commits one change per package, so `git log -- packages/mineflayer` reads as the history of those PRs and `stack/lock.json` says which PR heads are in and how each went in. Root `pnpm-workspace.yaml` overrides every one of those names to `workspace:*`, so transitive requires resolve to `packages/` too.
+
+Anything in `packages/` is overwritten by the next rebuild; changes go upstream as PRs and arrive here on their own. A PR that stops applying cleanly is cherry-picked in a scratch worktree instead: `git rerere` replays a resolution recorded in `stack/rr-cache/`, and a new conflict is sent to a Z.ai GLM model (`ZAI_API_KEY` secret, `ZAI_MODEL` / `ZAI_BASE_URL` repository variables; defaults `glm-5.3` at `https://api.z.ai/api/anthropic`) which rewrites only the conflict hunks; the result must pass `node --check` before it is committed and recorded. Without a key, or when the model fails three times, the PR is dropped for that cycle and listed in the lock file and the run summary; it is retried on the next cycle once a key is present. After a change the workflow refreshes `pnpm-lock.yaml`, runs `pnpm typecheck` and `node stack/smoke.ts` (loads every package), and only then pushes.
+
+`node stack/build.ts` does the same locally (`--dry-run` to only report, `--only=mineflayer,prismarine-viewer` to limit); it needs a clean tree, `gh auth` or `GH_TOKEN`, and keeps the upstream objects in `.stack-mirror/`, which is safe to delete.

@@ -1,0 +1,71 @@
+name: stack
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['stack/**', '.github/workflows/stack.yml', 'pnpm-workspace.yaml', 'package.json']
+
+concurrency:
+  group: stack
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - id: day
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .stack-mirror
+          key: stack-mirror-${{ steps.day.outputs.day }}
+          restore-keys: stack-mirror-
+      - name: Rebuild the PR stacks
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+          ZAI_MODEL: ${{ vars.ZAI_MODEL }}
+          ZAI_BASE_URL: ${{ vars.ZAI_BASE_URL }}
+        run: |
+          git config user.name 'bot-harness stack'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          before=$(git rev-parse HEAD)
+          node stack/build.ts
+          echo "changed=$([ "$before" = "$(git rev-parse HEAD)" ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+      - name: Refresh the lockfile
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          pnpm install --lockfile-only --ignore-scripts
+          if ! git diff --quiet -- pnpm-lock.yaml; then
+            git add pnpm-lock.yaml
+            git commit -q -m 'stack: refresh pnpm-lock.yaml for the new package manifests'
+          fi
+      - name: Load every package
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm --filter minecraft-data run generate:data
+          pnpm typecheck
+          node stack/smoke.ts
+      - name: Push
+        if: steps.build.outputs.changed == 'true'
+        run: |
+          git push origin HEAD:main || { git pull --rebase origin main && git push origin HEAD:main; }

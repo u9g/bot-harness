@@ -1,0 +1,15 @@
+{
+  "author": "u9g",
+  "stacks": {
+    "minecraft-data-data": { "repo": "PrismarineJS/minecraft-data", "base": "master" },
+    "protodef-schemas": { "repo": "ProtoDef-io/ProtoDef", "base": "master" },
+    "minecraft-data": { "repo": "PrismarineJS/node-minecraft-data", "base": "master", "path": "packages/minecraft-data", "nested": { "minecraft-data": "minecraft-data-data" } },
+    "protodef": { "repo": "ProtoDef-io/node-protodef", "base": "master", "path": "packages/protodef", "nested": { "ProtoDef": "protodef-schemas" } },
+    "minecraft-protocol": { "repo": "PrismarineJS/node-minecraft-protocol", "base": "master", "path": "packages/minecraft-protocol" },
+    "prismarine-item": { "repo": "PrismarineJS/prismarine-item", "base": "master", "path": "packages/prismarine-item" },
+    "prismarine-physics": { "repo": "PrismarineJS/prismarine-physics", "base": "master", "path": "packages/prismarine-physics" },
+    "mineflayer": { "repo": "PrismarineJS/mineflayer", "base": "master", "path": "packages/mineflayer" },
+    "mineflayer-pathfinder": { "repo": "PrismarineJS/mineflayer-pathfinder", "base": "master", "path": "packages/mineflayer-pathfinder" },
+    "prismarine-viewer": { "repo": "PrismarineJS/prismarine-viewer", "base": "master", "path": "packages/prismarine-viewer", "packageJson": { "scripts": { "prepare": "node viewer/prerender.js" } } }
+  }
+}
