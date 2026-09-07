@@ -91,12 +91,17 @@ function status (): BotStatus {
   }
 }
 
-function reconnect (newOpts: Partial<BotOptions> = {}): string {
+/**
+ * Ends the bot and creates a new one, resolving once it has spawned. The `bot` name in the
+ * calling exec keeps pointing at the old bot, so wait on this rather than on `bot`.
+ */
+async function reconnect (newOpts: Partial<BotOptions> = {}): Promise<string> {
   void stopRecording('reconnect')
   try { bot.end('reconnect') } catch {}
   Object.assign(botOpts, newOpts)
-  bot = createBot()
-  return 'reconnecting'
+  const b = bot = createBot()
+  await new Promise<void>(resolve => b.once('spawn', () => { resolve() }))
+  return `reconnected as ${b.username}`
 }
 
 // At most one recording per bot at a time.
@@ -131,7 +136,7 @@ async function stopRecording (why: string): Promise<void> {
 
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
 const SCOPE = { bot: () => bot, human: () => (human ??= createHuman(bot)), mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
-/** Scope names bound by calling their thunk, so a reconnect swaps what exec'd code sees. */
+/** Thunked names are resolved once per exec, so a reconnect is only visible to the next one. */
 const LAZY = new Set(['bot', 'human'])
 const SCOPE_NAMES = Object.keys(SCOPE)
 
