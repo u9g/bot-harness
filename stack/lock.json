@@ -1,0 +1,505 @@
+{
+  "stacks": {
+    "minecraft-data-data": {
+      "repo": "PrismarineJS/minecraft-data",
+      "base": "master",
+      "baseSha": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
+      "tip": "034e3561144666420dd87271f929e70e3ce65313",
+      "tree": "f76ba19d68c3cb38ea491bb78e01fade6d856489",
+      "prs": [
+        {
+          "number": 1266,
+          "title": "ci: cache Bedrock dedicated servers in bedrock-ci",
+          "head": "7bec9fac92a3d3de8cf2ed9294562463f71cee79",
+          "mergeBase": "9e850c983197a494326677989dc7a16c6205970f",
+          "status": "applied"
+        },
+        {
+          "number": 1267,
+          "title": "pc: fix intangible_projectile NBT and 26.1 item stack templates",
+          "head": "8b81a202a449de10a3ff1975c260b5c18d5ab464",
+          "mergeBase": "9e850c983197a494326677989dc7a16c6205970f",
+          "status": "applied"
+        },
+        {
+          "number": 1273,
+          "title": "pc/protocol: entity_teleport layout for 1.21.2+ (velocity, f32 rotation, relative flags)",
+          "head": "30dc8ae4cd271c1a652481e467a6efe5dec0e716",
+          "mergeBase": "fc2b5b89012138deaf777aa0cc68474455b8c323",
+          "status": "applied"
+        },
+        {
+          "number": 1278,
+          "title": "Fix pc/26.1 use_entity hand: plain varint, not a mapper",
+          "head": "b3eb1d49bbf717ca07d0d269a5c682b225a69ef5",
+          "mergeBase": "f5f3aaf7fbc60279b28ab3f3e35fcfb3096d6f36",
+          "status": "applied"
+        },
+        {
+          "number": 1282,
+          "title": "Add the useEntityHasLocation feature",
+          "head": "2427e5b1733c135bcc876bc4329467e36c641162",
+          "mergeBase": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
+          "status": "applied"
+        }
+      ]
+    },
+    "protodef-schemas": {
+      "repo": "ProtoDef-io/ProtoDef",
+      "base": "master",
+      "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
+      "tip": "ae3402e0de0645fa32657e87ca1a2bb5090033d0",
+      "tree": "648e591b6f4d638861def62feb39d45c2e7f3175",
+      "prs": [
+        {
+          "number": 65,
+          "title": "Add the hash datatype",
+          "head": "647e754b8147b40dd05e947801e00ef3f38f704f",
+          "mergeBase": "8e07785e94626882fa3333184bb366e3f6625356",
+          "status": "applied"
+        }
+      ]
+    },
+    "minecraft-data": {
+      "repo": "PrismarineJS/node-minecraft-data",
+      "base": "master",
+      "baseSha": "d449f39337587d4e3e1533f07e11acedc1ccd06c",
+      "tip": "d449f39337587d4e3e1533f07e11acedc1ccd06c",
+      "tree": "86c78007057f04403e7b6755b9c975a9b376aa27",
+      "prs": []
+    },
+    "protodef": {
+      "repo": "ProtoDef-io/node-protodef",
+      "base": "master",
+      "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
+      "tip": "df9cae544f997625be2baef3666206d6abfc9cb8",
+      "tree": "0a2490ab36cb11e5f8ae91c105b9d4efdd6ed646",
+      "prs": [
+        {
+          "number": 162,
+          "title": "Add check for fields not existing when writing container",
+          "head": "84058561bd7ca7ef18cb18f52b4f3b7dc625dd96",
+          "mergeBase": "67b411aacbf9ad2ccf0aaeac0bb4d9d568b568b3",
+          "status": "applied"
+        },
+        {
+          "number": 177,
+          "title": "Add the hash datatype",
+          "head": "5dffdf8f79fe1544d0a2a896fbffea163d8213bc",
+          "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
+          "status": "applied"
+        }
+      ]
+    },
+    "minecraft-protocol": {
+      "repo": "PrismarineJS/node-minecraft-protocol",
+      "base": "master",
+      "baseSha": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+      "tip": "b758e6ad3dc4b6e75f64d1cf2cdd1cc692041c2c",
+      "tree": "6fb18080893b0db43f19fa8206af40c106c4c1e1",
+      "prs": [
+        {
+          "number": 1522,
+          "title": "Match the vanilla client in the login/configuration handshake: cookies, brand, per-login chat session, known packs",
+          "head": "cb12f2a990b11e238acdd7eb7d9f9c68c3469cc6",
+          "mergeBase": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+          "status": "applied"
+        },
+        {
+          "number": 1523,
+          "title": "fix: write the 0 holder id for inline registryEntryHolder entries",
+          "head": "3e4dea271bf4b3cba920b3bc96dc2730bea26399",
+          "mergeBase": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+          "status": "applied"
+        },
+        {
+          "number": 1524,
+          "title": "test: retry the vanilla ping while the server has no status yet",
+          "head": "cd762d7bab4d35de514de41a88f5f20a23b34a93",
+          "mergeBase": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+          "status": "applied"
+        },
+        {
+          "number": 1525,
+          "title": "fix: send a command with no signable argument as chat_command",
+          "head": "1aca229d1f829ccccc70fa3fc419f5e4fd82f7b1",
+          "mergeBase": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+          "status": "applied"
+        },
+        {
+          "number": 1526,
+          "title": "test: select the version under test with MC_VERSION instead of a title grep",
+          "head": "80bc3b87a9d62b5ac96c157a34b8988894206687",
+          "mergeBase": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+          "status": "applied"
+        },
+        {
+          "number": 1527,
+          "title": "test: give the declare_commands tree the packet's rootIndex",
+          "head": "139b0783ae7ccb6a13150c5c56b26551b2b2caea",
+          "mergeBase": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
+          "status": "applied"
+        }
+      ]
+    },
+    "prismarine-item": {
+      "repo": "PrismarineJS/prismarine-item",
+      "base": "master",
+      "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
+      "tip": "b48befe71e680350882ae2ae81404cf327612023",
+      "tree": "f2aa74093db1234783194f6c533b238fd88f8213",
+      "prs": [
+        {
+          "number": 184,
+          "title": "Add Item.toHashedNotch for 1.21.5+ window_click slot claims",
+          "head": "0e154a4f48a65f8364c57a691d755064b68f24c4",
+          "mergeBase": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
+          "status": "applied"
+        }
+      ]
+    },
+    "prismarine-physics": {
+      "repo": "PrismarineJS/prismarine-physics",
+      "base": "master",
+      "baseSha": "a5353a922f1dee075aa797cb53be31919f9e1f46",
+      "tip": "19251e7f7f5ff3ffba402980ae0efdb96ca22bff",
+      "tree": "4e46dbcc416832deaf2691dc560c3a2b0b342208",
+      "prs": [
+        {
+          "number": 142,
+          "title": "Obey the flight the server grants in the abilities packet",
+          "head": "73252f2cc9081751e9ae88e7c7b6fcd5c9f077ca",
+          "mergeBase": "a5353a922f1dee075aa797cb53be31919f9e1f46",
+          "status": "applied"
+        }
+      ]
+    },
+    "mineflayer": {
+      "repo": "PrismarineJS/mineflayer",
+      "base": "master",
+      "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+      "tip": "1522556cb781c415f401f7b81844acd5125ab30b",
+      "tree": "b21994f208fe538e720639a1a79da58fb8430520",
+      "prs": [
+        {
+          "number": 4021,
+          "title": "placeBlock: reject an occupied target up front; nether test clears its sign spot",
+          "head": "4a16956f26e512b96550c8da11d3b319a37b0af5",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4027,
+          "title": "inventory: claim clicked slots by hash on 1.21.5+",
+          "head": "63bada466843c3eb701827518a6918ddc4a98afd",
+          "mergeBase": "c07e457f79fd6faef17b195a47b798f27031e867",
+          "status": "applied"
+        },
+        {
+          "number": 4059,
+          "title": "fix: clear a chest's lid open count when its block is replaced; make useChests await its fill commands",
+          "head": "60c76e97093a4975da0ea8f7d4650d8c238d5137",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4062,
+          "title": "entities: read the 1.21.2+ entity_teleport layout (velocity, float rotation, relative flags)",
+          "head": "cb6e354d203dc3cdf39deff6b171918041e137b4",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4063,
+          "title": "physics: send the movement input packets the vanilla client sends",
+          "head": "87a6a00408ab9ac3e432150a878803f3ed8bda77",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4064,
+          "title": "health: send player_loaded when the vanilla client would",
+          "head": "1fc5227b448f0050f7cf4e09fd37ff786d7a6247",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4065,
+          "title": "settings: send Client Information when the vanilla client does",
+          "head": "f079bbbb0ed43b2c3ebfe7f09be1fe6330124393",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4067,
+          "title": "test(nether): let retries pass by respecting the player's portal cooldown",
+          "head": "f78f97d4b675ffbdf09798a034a0f4b391786e63",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4068,
+          "title": "fix: drop the physics tick backlog after an event-loop stall instead of draining it",
+          "head": "47b1b39a0a48260ccd8ccaca0af17b078c80338b",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4069,
+          "title": "fix: apply a server-sent held slot without echoing it",
+          "head": "d21e8324741b3663eed691dfc4495a596a9c9653",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4070,
+          "title": "fix: answer ping at the start of the next tick, before movement packets",
+          "head": "b99c59b7f326fba8923a221ca7836b6365171c12",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4071,
+          "title": "fix: reset teams and scoreboards on every login",
+          "head": "07248e2cbb250529cc6d3cffeb496c5e43b95820",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4072,
+          "title": "fix: track the container stateId per window",
+          "head": "f71c7bf55bf84d3ad929c4ed5762e50d2861ce20",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4073,
+          "title": "fix: make bot.controlState's properties enumerable",
+          "head": "749a8fc89005cb4a28f42b4fcc906201901700ed",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4074,
+          "title": "test: gate the no-chunk physics check on a chunk load instead of a 2 s sleep",
+          "head": "3a78e927600cbfc638c13997c668e7dea369c691",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4075,
+          "title": "test: build only the versions under test",
+          "head": "46c13151b62e71caa58587e061ca4f199f1ad38b",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4078,
+          "title": "fix: answer a server teleport at the next tick, like the vanilla packet processor",
+          "head": "e199f22fcfcaa470f6d9f521ba8029472dfefd92",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4081,
+          "title": "fix: give teamRemoved the team that was removed",
+          "head": "f021eb8ad904576ca4e20370ed32497bb6319ce6",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "applied"
+        },
+        {
+          "number": 4082,
+          "title": "game: send the client brand once per connection, as the vanilla client does",
+          "head": "b9d9f1642467d36ac0631004702bcc6f70407254",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4083,
+          "title": "Track the abilities the server grants",
+          "head": "caf2555bfbc6be3ac1bf074f4ecbda36978fbc51",
+          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4085,
+          "title": "Share one pre-incremented block prediction sequence across dig, use_item_on and use_item",
+          "head": "4d203cbf7c79676400f734a7d9d8d50a6e38b63a",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4086,
+          "title": "Send the client_command respawn after win_game with the actionId field",
+          "head": "02bc8ced4f231e5baf7fdfe525a7c1d6e793bd22",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4087,
+          "title": "Report resource packs as ACCEPTED, DOWNLOADED, SUCCESSFULLY_LOADED and deny once",
+          "head": "dc290378d252dda9026c5183e2dd2431a58e1ae5",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4088,
+          "title": "internal tests: wait for plugin injection before driving the bot from playerJoin",
+          "head": "45ec70455263d41bc9be510a4a13f03161ddca97",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4089,
+          "title": "activateEntity: send the vanilla interact pair with the real sneak state and hit point",
+          "head": "5c912cd25018530584018e2465258ceddd1b7b83",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4090,
+          "title": "Default activateBlock's cursor to the clicked face and skip activateItem with an empty hand",
+          "head": "43c28f1eb52cdc855e27fc40f8739e876e3eefe1",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4091,
+          "title": "Swing the arm after use_item_on when placing, not before",
+          "head": "8b4b1476c87f86398a2ca12703084586946b7ca7",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4092,
+          "title": "Throw from bot.attack for targets the server kicks for",
+          "head": "f975031dc6bffcbd2d47afb312cc0a9245a38fb8",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4093,
+          "title": "Dismount by holding sneak for one tick on 1.21.3+",
+          "head": "9eb574f3849981d1dfa784258cbaa88411911ecb",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4094,
+          "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
+          "head": "53a2bf0821fac569b2b063967f10a79394c98cbb",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        },
+        {
+          "number": 4095,
+          "title": "Right-click entities through one path, so useOn and mount send the vanilla pair",
+          "head": "a35c1ff1a0da8d668289e03f5312f4486e4f5919",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "conflict",
+          "note": "no resolver for test/internalTest.js"
+        }
+      ]
+    },
+    "mineflayer-pathfinder": {
+      "repo": "PrismarineJS/mineflayer-pathfinder",
+      "base": "master",
+      "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+      "tip": "84da0cbb8f99acbf64b650aa1a8700ec95e6c0c6",
+      "tree": "c5358aa6ce24f5c284ab774ce0bb3fdd4e9d5c90",
+      "prs": [
+        {
+          "number": 375,
+          "title": "fix: goto rejects an unreachable goal instead of resolving, and stop() no longer latches while idle",
+          "head": "4bd1604bc41e251bc203dfb137b337188e2dc3e0",
+          "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+          "status": "applied"
+        },
+        {
+          "number": 376,
+          "title": "createHuman: cap the wait for the head to settle",
+          "head": "e836c40bb6a57660700c911c4e9511f9555546f5",
+          "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+          "status": "applied"
+        }
+      ]
+    },
+    "prismarine-viewer": {
+      "repo": "PrismarineJS/prismarine-viewer",
+      "base": "master",
+      "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+      "tip": "b25db63ce7c967ddf82843526fdfa5e9a376b348",
+      "tree": "f73dff04bae5e315c752a502780dc95597d889dc",
+      "prs": [
+        {
+          "number": 484,
+          "title": "Add Minecraft 26.1 support",
+          "head": "8ada6f3360b84bf8838bdef231600399cd24f4b1",
+          "mergeBase": "bead85c57a2365e7c88bfe36ee1944da51f8449f",
+          "status": "conflict",
+          "note": "no resolver for viewer/lib/atlas.js, viewer/lib/worldrenderer.js"
+        },
+        {
+          "number": 488,
+          "title": "Render negative-Y sections on 1.18+ worlds",
+          "head": "8049729deabbfe39d5beb14af5a543c927bb66a3",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "applied"
+        },
+        {
+          "number": 490,
+          "title": "Render player skins",
+          "head": "832cb6d4fd06e46147b7298f88e997482334d474",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "applied"
+        },
+        {
+          "number": 503,
+          "title": "Add viewer.waitForReady() for a fully textured first frame",
+          "head": "af9075bb69c4a8d895ea8710898c56cf25db2f42",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "conflict",
+          "note": "no resolver for viewer/lib/entities.js, viewer/lib/entity/Entity.js, viewer/lib/utils.electron.js, viewer/lib/utils.js, viewer/lib/utils.web.js, viewer/lib/worker.js"
+        },
+        {
+          "number": 506,
+          "title": "Render dropped items",
+          "head": "4c2502419e916aec7cba4e5f2005d745ef30eae0",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "conflict",
+          "note": "no resolver for viewer/lib/worldView.js"
+        },
+        {
+          "number": 509,
+          "title": "fix: resolve entity bone parents by name, whatever their case",
+          "head": "57cfc361ca6072083d22cdd9a8a03194c75f03fc",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "applied"
+        },
+        {
+          "number": 510,
+          "title": "Decode host images without holding the event loop",
+          "head": "3bbee612580004597f382bfac18b520e4021dcda",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "conflict",
+          "note": "no resolver for viewer/lib/entities.js, viewer/lib/entity/Entity.js, viewer/lib/utils.electron.js, viewer/lib/utils.js, viewer/lib/utils.web.js, viewer/lib/worker.js"
+        },
+        {
+          "number": 511,
+          "title": "Parse the block states in the mesher, not on the calling thread",
+          "head": "05bd6ecb5578ecc72ac45abc52c819f8e59f2422",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "conflict",
+          "note": "no resolver for viewer/lib/entities.js, viewer/lib/entity/Entity.js, viewer/lib/utils.electron.js, viewer/lib/utils.js, viewer/lib/utils.web.js, viewer/lib/worker.js"
+        }
+      ]
+    }
+  }
+}

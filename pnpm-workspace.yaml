@@ -1,10 +1,18 @@
-blockExoticSubdeps: false
-minimumReleaseAgeExclude:
-  - mineflayer@4.39.0
+packages:
+  - packages/*
 allowBuilds:
   gl: true
+  canvas: true
+  core-js: false
+  es5-ext: false
+  puppeteer: false
 overrides:
-  minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
-  minecraft-protocol: https://github.com/u9g/node-minecraft-protocol/releases/download/v1.68.0-allprs.2/minecraft-protocol-1.68.0.tgz
-  prismarine-item: https://github.com/u9g/prismarine-item/releases/download/v1.18.0-allprs.1/prismarine-item-1.18.0.tgz
-  protodef: https://github.com/u9g/node-protodef/releases/download/v1.19.0-allprs.2/protodef-1.19.0.tgz
+  mineflayer: workspace:*
+  mineflayer-pathfinder: workspace:*
+  minecraft-data: workspace:*
+  minecraft-protocol: workspace:*
+  protodef: workspace:*
+  prismarine-item: workspace:*
+  prismarine-physics: workspace:*
+  prismarine-viewer: workspace:*
+  gl: 9.0.0-rc.10
