@@ -45,6 +45,9 @@ export interface BotStatus {
   lastError?: { at: string, message: string }
 }
 
+/** Set when the bot's connection is gone, so a caller sees it even though the exec itself ran. */
+export interface Disconnected { disconnected?: string }
+
 export type ExecReply =
-  | { id: number, ok: true, value: string }
-  | { id: number, ok: false, error: string }
+  | ({ id: number, ok: true, value: string } & Disconnected)
+  | ({ id: number, ok: false, error: string } & Disconnected)

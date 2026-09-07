@@ -34,6 +34,9 @@ const log = (...a: unknown[]): void => console.log(new Date().toISOString(), ...
 const state: Record<string, unknown> = {}
 // One human controller per bot, built on first use; a new bot needs a new one.
 let human: ReturnType<typeof createHuman> | null = null
+/** Why the current bot's connection ended, null while it is connected. A dead bot still answers
+ *  exec (its `state` and packet history are the point of asking), so the reason rides along. */
+let disconnected: string | null = null
 let bot: Bot = createBot()
 
 // What the bot is doing, as opposed to whether this process is alive: a kicked bot keeps its
@@ -55,12 +58,14 @@ function createBot (): Bot {
   b.on('kicked', r => {
     const reason = typeof r === 'string' ? r : JSON.stringify(r)
     health.lastKick = { at: now(), reason }
+    disconnected = `kicked: ${reason}`
     log('kicked', reason)
   })
   b.on('error', e => { health.lastError = { at: now(), message: e.message ?? String(e) }; log('error', e.stack ?? e) })
   b.on('end', r => {
     health.connected = false
     health.lastEnd = { at: now(), reason: String(r) }
+    disconnected ??= `ended: ${r}`
     log('end', r)
     // The recorder draws the bot's view; with the connection gone there is nothing left to draw, and
     // a renderer left running holds its share of the event loop and grows the file until someone
@@ -69,6 +74,7 @@ function createBot (): Bot {
   })
   b.on('messagestr', m => log('chat', m))
   human = null
+  disconnected = null
   return b
 }
 
@@ -158,6 +164,8 @@ async function run ({ code, timeout = 30_000 }: ExecRequest): Promise<unknown> {
   try { return await Promise.race([fn(...args), timedOut]) } finally { clearTimeout(timer!) }
 }
 
+const note = (): { disconnected?: string } => (disconnected === null ? {} : { disconnected })
+
 function serialize (v: unknown): string {
   if (typeof v === 'string') return v
   return util.inspect(v, { depth: 4, breakLength: 100, maxArrayLength: 200 })
@@ -177,8 +185,8 @@ const server = net.createServer(conn => {
       try { req = JSON.parse(line) } catch { send({ id: -1, ok: false, error: 'bad json' }); continue }
       if (isStatus(req)) { send({ id: req.id, ok: true, value: JSON.stringify(status()) }); continue }
       run(req).then(
-        value => send({ id: req.id, ok: true, value: serialize(value) }),
-        (err: unknown) => send({ id: req.id, ok: false, error: err instanceof Error ? err.stack ?? err.message : String(err) })
+        value => send({ id: req.id, ok: true, value: serialize(value), ...note() }),
+        (err: unknown) => send({ id: req.id, ok: false, error: err instanceof Error ? err.stack ?? err.message : String(err), ...note() })
       ).catch(() => {})
     }
   })
