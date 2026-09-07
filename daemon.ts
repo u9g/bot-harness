@@ -31,14 +31,20 @@ function createBot (): Bot {
   b.on('spawn', () => log('spawn', b.entity.position))
   b.on('kicked', r => log('kicked', typeof r === 'string' ? r : JSON.stringify(r)))
   b.on('error', e => log('error', e.stack ?? e))
-  b.on('end', r => log('end', r))
+  b.on('end', r => {
+    log('end', r)
+    // The recorder draws the bot's view; with the connection gone there is nothing left to draw, and
+    // a renderer left running holds its share of the event loop and grows the file until someone
+    // remembers to stop it.
+    void stopRecording('bot ended')
+  })
   b.on('messagestr', m => log('chat', m))
   human = null
   return b
 }
 
 function reconnect (newOpts: Partial<BotOptions> = {}): string {
-  if (recording) void record.stop()
+  void stopRecording('reconnect')
   try { bot.end('reconnect') } catch {}
   Object.assign(botOpts, newOpts)
   bot = createBot()
@@ -67,6 +73,12 @@ const record = {
     log('recorded', file)
     return file
   }
+}
+
+/** Ends a recording that is still running, for a reason other than someone asking for the file. */
+async function stopRecording (why: string): Promise<void> {
+  if (!recording) return
+  try { await record.stop() } catch (e) { log('recording did not stop cleanly after', why, e) }
 }
 
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
