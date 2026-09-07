@@ -5,3 +5,4 @@ allowBuilds:
   gl: true
 overrides:
   minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.1/minecraft-data-3.116.0.tgz
+  minecraft-protocol: https://github.com/u9g/node-minecraft-protocol/releases/download/v1.68.0-allprs.1/minecraft-protocol-1.68.0.tgz
