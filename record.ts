@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import type { Bot } from 'mineflayer'
 
@@ -23,11 +23,22 @@ export interface Recording {
   stop: () => Promise<string>
 }
 
-// headless-gl's context comes through GLX, so an X display is required even with software Mesa.
+// headless-gl's context comes through GLX, so an X display is required even with software Mesa. An
+// Xvfb has no GPU driver, so it renders with llvmpipe; a host X server on the same machine reaches
+// the real driver and is an order of magnitude faster. Prefer any display that already exists.
+function hostDisplay (): string | null {
+  let sockets: string[]
+  try { sockets = readdirSync('/tmp/.X11-unix') } catch { return null }
+  const numbers = sockets.filter(n => /^X\d+$/.test(n)).map(n => Number(n.slice(1))).sort((a, b) => a - b)
+  // :99 is this module's own Xvfb, so it is the last resort rather than a host display.
+  return numbers.length === 0 ? null : ':' + (numbers.find(n => n !== 99) ?? numbers[0])
+}
+
 async function ensureDisplay (width: number, height: number): Promise<void> {
   if (process.platform !== 'linux' || process.env.DISPLAY) return
+  const host = hostDisplay()
+  if (host !== null) { process.env.DISPLAY = host; return }
   process.env.DISPLAY = ':99'
-  if (existsSync('/tmp/.X11-unix/X99')) return
   const xvfb = spawn('Xvfb', [':99', '-screen', '0', `${width}x${height}x24`], { stdio: 'ignore', detached: true })
   xvfb.on('error', () => {})
   xvfb.unref()
