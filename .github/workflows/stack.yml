@@ -58,11 +58,10 @@ jobs:
             git add pnpm-lock.yaml
             git commit -q -m 'stack: refresh pnpm-lock.yaml for the new package manifests'
           fi
-      - name: Load every package
+      - name: Install, typecheck and load every package
         if: steps.build.outputs.changed == 'true'
         run: |
-          pnpm install --frozen-lockfile --ignore-scripts
-          pnpm --filter minecraft-data run generate:data
+          pnpm install --frozen-lockfile
           pnpm typecheck
           node stack/smoke.ts
       - name: Push
