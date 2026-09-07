@@ -13,6 +13,8 @@ export interface RecordOpts {
   viewDistance?: number
   // 0 meshes inline on the daemon thread instead of on a worker.
   numWorkers?: number
+  // Share of wall-clock the renderer may hold the daemon's event loop (0-1).
+  duty?: number
 }
 
 export interface Recording {
@@ -46,7 +48,7 @@ function ffmpeg (args: string[]): { proc: ChildProcess, done: Promise<void> } {
 }
 
 export async function startRecording (bot: Bot, file: string, opts: RecordOpts = {}): Promise<Recording> {
-  const { width = 640, height = 360, fps = 20, viewDistance = 4, numWorkers = 1 } = opts
+  const { width = 640, height = 360, fps = 20, viewDistance = 4, numWorkers = 1, duty = 0.25 } = opts
   await ensureDisplay(width, height)
   if (!bot.entity) await new Promise<void>(resolve => bot.once('spawn', resolve))
 
@@ -93,16 +95,23 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   // Frames before the atlas uploads and chunks mesh are blank sky. The first frame is
   // deferred until the atlas is set, some sections are meshed, and none are outstanding.
   const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
+  // Idle to leave after a render that took `cost`, so rendering holds at most `duty` of wall-clock.
+  const gap = (cost: number): number => cost * (1 / duty - 1)
+  const draw = (): number => {
+    const t = performance.now()
+    viewer.update()
+    renderer.render(viewer.scene, viewer.camera)
+    return performance.now() - t
+  }
   const w = viewer.world as { material: { map: unknown }, sectionMeshs: Record<string, unknown>, sectionsOutstanding?: Set<unknown> }
   const warmupDeadline = performance.now() + 10_000
   while (performance.now() < warmupDeadline) {
-    viewer.update()
-    renderer.render(viewer.scene, viewer.camera)
+    const cost = draw()
     const outstanding = w.sectionsOutstanding ? w.sectionsOutstanding.size : 0
     if (w.material.map && Object.keys(w.sectionMeshs).length > 0 && outstanding === 0) break
-    await sleep(50)
+    await sleep(Math.max(50, gap(cost)))
   }
-  for (let i = 0; i < 12; i++) { viewer.update(); renderer.render(viewer.scene, viewer.camera); await sleep(40) }
+  for (let i = 0; i < 12; i++) await sleep(Math.max(40, gap(draw())))
 
   const raw = ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`]
   const video = ffmpeg([...raw, '-r', String(fps), '-i', 'pipe:0', '-vf', 'vflip', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', file])
@@ -114,14 +123,20 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   let written = 0
   let timer: NodeJS.Timeout | null = null
   const tick = (): void => {
+    const start = performance.now()
     viewer.update()
     renderer.render(viewer.scene, viewer.camera)
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+    const cost = performance.now() - start
     // Output runs at wall-clock rate: every frame slot elapsed since t0 gets the latest render.
     last = Buffer.from(pixels)
     const due = Math.floor((performance.now() - t0) / frameMs) + 1
     for (; written < due; written++) video.proc.stdin!.write(last)
-    timer = setTimeout(tick, Math.max(0, t0 + written * frameMs - performance.now()))
+    // A render blocks the daemon's only thread, so the bot's physics and packet handling stop for
+    // `cost`. The next render waits at least gap(cost), capping that share at `duty` and keeping
+    // the bot's movement close enough to real time that servers do not see it teleport-desync.
+    const next = Math.max(t0 + written * frameMs - performance.now(), gap(cost))
+    timer = setTimeout(tick, Math.max(0, next))
   }
   tick()
 
