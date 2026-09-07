@@ -17,7 +17,7 @@ function usage (): never {
   mcbot exec  ID [-t TIMEOUT_MS] <code>   code is an expression or async fn body
                                           in scope: bot, human, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
   mcbot exec  ID -f FILE | -              read code from file / stdin
-  mcbot record ID start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1]
+  mcbot record ID start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1] [--duty 0.25]
   mcbot record ID snapshot [-o FILE.png]  PNG of the latest recorded frame
   mcbot record ID stop                    finish the video; prints its path
   mcbot stop   ID
@@ -129,7 +129,7 @@ function record (): Promise<void> {
   switch (rest[0]) {
     case 'start': {
       const num = (k: string): number | undefined => str(flags[k]) ? Number(flags[k]) : undefined
-      const o = { width: num('width'), height: num('height'), fps: num('fps'), viewDistance: num('dist'), numWorkers: num('workers') }
+      const o = { width: num('width'), height: num('height'), fps: num('fps'), viewDistance: num('dist'), numWorkers: num('workers'), duty: num('duty') }
       return send(`record.start(${file}, ${JSON.stringify(o)})`)
     }
     case 'snapshot': return send(`record.snapshot(${file})`)
