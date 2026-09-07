@@ -11,7 +11,7 @@ import type { DaemonOpts, ExecRequest, ExecReply } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
 
 const require = createRequire(import.meta.url)
-const { pathfinder, Movements, goals } = pathfinderPkg
+const { pathfinder, Movements, goals, createHuman } = pathfinderPkg
 
 const opts: DaemonOpts = JSON.parse(process.env.MCBOT_OPTS!)
 const botOpts = opts.bot as BotOptions
@@ -20,6 +20,8 @@ const log = (...a: unknown[]): void => console.log(new Date().toISOString(), ...
 
 /** Persists across exec calls; scripts can stash anything here. */
 const state: Record<string, unknown> = {}
+// One human controller per bot, built on first use; a new bot needs a new one.
+let human: ReturnType<typeof createHuman> | null = null
 let bot: Bot = createBot()
 
 function createBot (): Bot {
@@ -31,6 +33,7 @@ function createBot (): Bot {
   b.on('error', e => log('error', e.stack ?? e))
   b.on('end', r => log('end', r))
   b.on('messagestr', m => log('chat', m))
+  human = null
   return b
 }
 
@@ -67,7 +70,9 @@ const record = {
 }
 
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
-const SCOPE = { bot: () => bot, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
+const SCOPE = { bot: () => bot, human: () => (human ??= createHuman(bot)), mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
+/** Scope names bound by calling their thunk, so a reconnect swaps what exec'd code sees. */
+const LAZY = new Set(['bot', 'human'])
 const SCOPE_NAMES = Object.keys(SCOPE)
 
 type ExecFn = (...args: unknown[]) => Promise<unknown>
@@ -80,7 +85,7 @@ function compile (code: string): ExecFn {
 
 async function run ({ code, timeout = 30_000 }: ExecRequest): Promise<unknown> {
   const fn = compile(code)
-  const args = SCOPE_NAMES.map(k => k === 'bot' ? bot : SCOPE[k as keyof typeof SCOPE])
+  const args = SCOPE_NAMES.map(k => LAZY.has(k) ? (SCOPE[k as 'bot' | 'human'])() : SCOPE[k as keyof typeof SCOPE])
   let timer: NodeJS.Timeout
   const timedOut = new Promise<never>((_, rej) => {
     timer = setTimeout(() => rej(new Error(`exec timed out after ${timeout}ms (still running in daemon)`)), timeout)
