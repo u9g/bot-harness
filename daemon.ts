@@ -70,7 +70,7 @@ const record = {
 }
 
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
-const SCOPE = { bot: () => bot, human: () => (human ??= createHuman(bot)), mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
+const SCOPE = { bot: () => bot, human: () => (human ??= createHuman(bot)), createHuman: (o?: Parameters<typeof createHuman>[1]) => createHuman(bot, o), mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
 /** Scope names bound by calling their thunk, so a reconnect swaps what exec'd code sees. */
 const LAZY = new Set(['bot', 'human'])
 const SCOPE_NAMES = Object.keys(SCOPE)

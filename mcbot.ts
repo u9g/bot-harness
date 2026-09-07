@@ -15,7 +15,7 @@ function usage (): never {
   mcbot start ID [-d] [--host H] [--port P] [-u USERNAME] [-v VERSION=26.1] [--auth offline|microsoft] [--key=value ...]
               runs until the bot process exits (ctrl-c stops it); -d detaches instead
   mcbot exec  ID [-t TIMEOUT_MS] <code>   code is an expression or async fn body
-                                          in scope: bot, human, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
+                                          in scope: bot, human, createHuman, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
   mcbot exec  ID -f FILE | -              read code from file / stdin
   mcbot record ID start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1] [--duty 0.25]
   mcbot record ID snapshot [-o FILE.png]  PNG of the latest recorded frame
