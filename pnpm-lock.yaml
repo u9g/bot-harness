@@ -20,7 +20,7 @@ importers:
         version: https://github.com/u9g/mineflayer/releases/download/v4.39.0-allprs.2/mineflayer-4.39.0.tgz
       mineflayer-pathfinder:
         specifier: github:u9g/mineflayer-pathfinder#human
-        version: https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/3516efeb79105bc72143650b8feb64bb00bd4b9a
+        version: https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/1995e01cf140946ebb6b9ed5b8e328f3c04ac2cd
       prismarine-viewer:
         specifier: https://github.com/u9g/prismarine-viewer/releases/download/v1.33.0-host26.3/prismarine-viewer-1.33.0.tgz
         version: https://github.com/u9g/prismarine-viewer/releases/download/v1.33.0-host26.3/prismarine-viewer-1.33.0.tgz
@@ -487,8 +487,8 @@ packages:
     version: 1.68.0
     engines: {node: '>=22'}
 
-  mineflayer-pathfinder@https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/3516efeb79105bc72143650b8feb64bb00bd4b9a:
-    resolution: {gitHosted: true, integrity: sha512-nboWc8Z/aXIIkpiU/qLGWQjXFV88Y0Q2rm+mg9W0pAGdr/M8abaGB49jO882WeL9wQJl+93MCUoZwkVW6tcztA==, tarball: https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/3516efeb79105bc72143650b8feb64bb00bd4b9a}
+  mineflayer-pathfinder@https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/1995e01cf140946ebb6b9ed5b8e328f3c04ac2cd:
+    resolution: {gitHosted: true, integrity: sha512-nboWc8Z/aXIIkpiU/qLGWQjXFV88Y0Q2rm+mg9W0pAGdr/M8abaGB49jO882WeL9wQJl+93MCUoZwkVW6tcztA==, tarball: https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/1995e01cf140946ebb6b9ed5b8e328f3c04ac2cd}
     version: 2.4.5
 
   mineflayer@https://github.com/u9g/mineflayer/releases/download/v4.39.0-allprs.2/mineflayer-4.39.0.tgz:
@@ -1430,7 +1430,7 @@ snapshots:
       - encoding
       - supports-color
 
-  mineflayer-pathfinder@https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/3516efeb79105bc72143650b8feb64bb00bd4b9a:
+  mineflayer-pathfinder@https://codeload.github.com/u9g/mineflayer-pathfinder/tar.gz/1995e01cf140946ebb6b9ed5b8e328f3c04ac2cd:
     dependencies:
       minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.1/minecraft-data-3.116.0.tgz
       prismarine-block: 1.23.0
