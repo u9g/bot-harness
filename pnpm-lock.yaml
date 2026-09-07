@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+  minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
   minecraft-protocol: https://github.com/u9g/node-minecraft-protocol/releases/download/v1.68.0-allprs.2/minecraft-protocol-1.68.0.tgz
   prismarine-item: https://github.com/u9g/prismarine-item/releases/download/v1.18.0-allprs.1/prismarine-item-1.18.0.tgz
   protodef: https://github.com/u9g/node-protodef/releases/download/v1.19.0-allprs.2/protodef-1.19.0.tgz
@@ -477,8 +477,8 @@ packages:
     resolution: {integrity: sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==}
     engines: {node: '>=10'}
 
-  minecraft-data@https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz:
-    resolution: {integrity: sha512-GpKAKgho7DUmoknuquTsXLBm2qOc50qKW7x7OEM0su66Dajbs2JkMbu3bcnRaWFFK78s42WSPmYTrhED2tpw6w==, tarball: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz}
+  minecraft-data@https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz:
+    resolution: {integrity: sha512-mLSTdabTSJ2kxsjOFhXiHDV3UIkEEpEDCVy2WRw9FSvaOOQ95GtKdiDz9P/vHLRHBMXNAlusHi+HIY0W3kGImQ==, tarball: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz}
     version: 3.116.0
 
   minecraft-folder-path@1.2.0:
@@ -1405,7 +1405,7 @@ snapshots:
 
   mimic-response@3.1.0: {}
 
-  minecraft-data@https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz: {}
+  minecraft-data@https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz: {}
 
   minecraft-folder-path@1.2.0: {}
 
@@ -1418,7 +1418,7 @@ snapshots:
       debug: 4.4.3
       endian-toggle: 0.0.0
       lodash.merge: 4.6.2
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       minecraft-folder-path: 1.2.0
       node-fetch: 2.7.0
       node-rsa: 0.4.2
@@ -1436,7 +1436,7 @@ snapshots:
 
   mineflayer-pathfinder@https://github.com/u9g/mineflayer-pathfinder/releases/download/v2.4.5-allprs.1/mineflayer-pathfinder-2.4.5.tgz:
     dependencies:
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       prismarine-block: 1.23.0
       prismarine-entity: 2.6.0
       prismarine-item: https://github.com/u9g/prismarine-item/releases/download/v1.18.0-allprs.1/prismarine-item-1.18.0.tgz
@@ -1448,7 +1448,7 @@ snapshots:
 
   mineflayer@https://github.com/u9g/mineflayer/releases/download/v4.39.0-allprs.3/mineflayer-4.39.0.tgz:
     dependencies:
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       minecraft-protocol: https://github.com/u9g/node-minecraft-protocol/releases/download/v1.68.0-allprs.2/minecraft-protocol-1.68.0.tgz
       mojangson: 2.1.0
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
@@ -1588,7 +1588,7 @@ snapshots:
 
   prismarine-block@1.23.0:
     dependencies:
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       prismarine-biome: 1.4.0(prismarine-registry@1.12.0)
       prismarine-chat: 1.13.0
       prismarine-item: https://github.com/u9g/prismarine-item/releases/download/v1.18.0-allprs.1/prismarine-item-1.18.0.tgz
@@ -1640,7 +1640,7 @@ snapshots:
 
   prismarine-physics@1.11.1:
     dependencies:
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       prismarine-nbt: 2.8.0
       vec3: 0.2.0
 
@@ -1658,7 +1658,7 @@ snapshots:
 
   prismarine-registry@1.12.0:
     dependencies:
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       prismarine-block: 1.23.0
       prismarine-nbt: 2.8.0
 
@@ -1667,7 +1667,7 @@ snapshots:
       '@tweenjs/tween.js': 23.1.3
       compression: 1.8.1
       express: 4.22.2
-      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.2/minecraft-data-3.116.0.tgz
+      minecraft-data: https://github.com/u9g/node-minecraft-data/releases/download/v3.116.0-allprs.3/minecraft-data-3.116.0.tgz
       pngjs: 7.0.0
       prismarine-block: 1.23.0
       prismarine-chunk: 1.41.0
