@@ -23,6 +23,8 @@ Exec'd code has these names in scope: `bot`, `human` (mineflayer-pathfinder's `c
 
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
+`status` reports the daemon and then the bot, because the two come apart: a kicked bot keeps its daemon, its `bot.entity` and its `physicsEnabled` flag and only stops sending packets, so a control loop can drive it for minutes without noticing. It prints `connected` with the login time, position and health, or `DISCONNECTED` with the last kick, end and error the daemon saw, and exits non-zero unless the bot is connected.
+
 ## Recording
 
 `record start` renders the bot's first-person view with prismarine-viewer's core through headless-gl (no browser, no node-canvas) and pipes the frames to ffmpeg as an mp4; `record stop` finishes the file. Defaults are 640x360 at 20 fps with a 4-chunk view distance (`--width`, `--height`, `--fps`, `--dist`), one mesher worker thread (`--workers 0` meshes on the bot's own thread instead), and a 25% render duty cycle (`--duty`). Files default to `~/.mcbot/NAME-TIMESTAMP.mp4` (`-o` to choose). The video runs at wall-clock speed: a frame that renders late is repeated, not dropped. A recording ends with the bot's connection: a kick or a timeout finishes the file and logs `recorded <path>`, so a dead bot never leaves the renderer running or the mp4 without its index.

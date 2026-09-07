@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import mineflayer, { type Bot, type BotOptions } from 'mineflayer'
 import pathfinderPkg from 'mineflayer-pathfinder'
 import { Vec3 } from 'vec3'
-import type { DaemonOpts, ExecRequest, ExecReply } from './protocol.ts'
+import type { BotStatus, DaemonOpts, ExecRequest, ExecReply, Request, StatusRequest } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
 
 const ownRequire = createRequire(import.meta.url)
@@ -36,14 +36,31 @@ const state: Record<string, unknown> = {}
 let human: ReturnType<typeof createHuman> | null = null
 let bot: Bot = createBot()
 
+// What the bot is doing, as opposed to whether this process is alive: a kicked bot keeps its
+// daemon, its entity and its physicsEnabled flag, and only stops sending packets.
+const health: {
+  connected: boolean
+  loginAt?: string
+  lastKick?: { at: string, reason: string }
+  lastEnd?: { at: string, reason: string }
+  lastError?: { at: string, message: string }
+} = { connected: false }
+const now = (): string => new Date().toISOString()
+
 function createBot (): Bot {
   const b = mineflayer.createBot(botOpts)
   b.loadPlugin(pathfinder)
-  b.on('login', () => log('login', b.username))
+  b.on('login', () => { health.connected = true; health.loginAt = now(); log('login', b.username) })
   b.on('spawn', () => log('spawn', b.entity.position))
-  b.on('kicked', r => log('kicked', typeof r === 'string' ? r : JSON.stringify(r)))
-  b.on('error', e => log('error', e.stack ?? e))
+  b.on('kicked', r => {
+    const reason = typeof r === 'string' ? r : JSON.stringify(r)
+    health.lastKick = { at: now(), reason }
+    log('kicked', reason)
+  })
+  b.on('error', e => { health.lastError = { at: now(), message: e.message ?? String(e) }; log('error', e.stack ?? e) })
   b.on('end', r => {
+    health.connected = false
+    health.lastEnd = { at: now(), reason: String(r) }
     log('end', r)
     // The recorder draws the bot's view; with the connection gone there is nothing left to draw, and
     // a renderer left running holds its share of the event loop and grows the file until someone
@@ -53,6 +70,25 @@ function createBot (): Bot {
   b.on('messagestr', m => log('chat', m))
   human = null
   return b
+}
+
+const isStatus = (r: Request): r is StatusRequest => (r as StatusRequest).status === true
+
+function status (): BotStatus {
+  const pos = bot.entity?.position
+  return {
+    connected: health.connected,
+    username: bot.username ?? opts.bot.username,
+    host: botOpts.host ?? opts.bot.host,
+    port: botOpts.port ?? opts.bot.port,
+    version: botOpts.version ?? opts.bot.version,
+    loginAt: health.loginAt,
+    position: pos ? { x: pos.x, y: pos.y, z: pos.z } : undefined,
+    health: bot.health,
+    lastKick: health.lastKick,
+    lastEnd: health.lastEnd,
+    lastError: health.lastError
+  }
 }
 
 function reconnect (newOpts: Partial<BotOptions> = {}): string {
@@ -132,8 +168,9 @@ const server = net.createServer(conn => {
     while ((i = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, i); buf = buf.slice(i + 1)
       if (!line.trim()) continue
-      let req: ExecRequest
+      let req: Request
       try { req = JSON.parse(line) } catch { send({ id: -1, ok: false, error: 'bad json' }); continue }
+      if (isStatus(req)) { send({ id: req.id, ok: true, value: JSON.stringify(status()) }); continue }
       run(req).then(
         value => send({ id: req.id, ok: true, value: serialize(value) }),
         (err: unknown) => send({ id: req.id, ok: false, error: err instanceof Error ? err.stack ?? err.message : String(err) })
