@@ -5,7 +5,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
-import type { BotOpts, DaemonOpts, ExecReply, ExecRequest } from './protocol.ts'
+import type { BotOpts, BotStatus, DaemonOpts, ExecReply, ExecRequest, Request, StatusRequest } from './protocol.ts'
 
 const DIR = process.env.MCBOT_DIR ?? path.join(os.homedir(), '.mcbot')
 fs.mkdirSync(DIR, { recursive: true })
@@ -21,7 +21,7 @@ function usage (): never {
   mcbot record ID snapshot [-o FILE.png]  PNG of the latest recorded frame
   mcbot record ID stop                    finish the video; prints its path
   mcbot stop   ID
-  mcbot status ID
+  mcbot status ID                         daemon state, then whether the bot itself is connected
   mcbot logs   ID [-f]
   mcbot list                              every bot in ${DIR} with its server
 ID names one bot: 1-29 characters from A-Z a-z 0-9 _ -, chosen at start and given to every other command.
@@ -138,20 +138,27 @@ function record (): Promise<void> {
   }
 }
 
-async function send (code: string): Promise<void> {
+async function request (req: Request): Promise<ExecReply> {
   const c = await connect()
-  const req: ExecRequest = { id: 1, code, timeout: str(flags.t) ? Number(flags.t) : undefined }
   c.write(JSON.stringify(req) + '\n')
-  let buf = ''
-  c.on('data', d => {
-    buf += d
-    const i = buf.indexOf('\n')
-    if (i < 0) return
-    const res: ExecReply = JSON.parse(buf.slice(0, i))
-    c.end()
-    if (res.ok) { if (res.value !== 'undefined') console.log(res.value); process.exit(0) }
-    console.error(res.error); process.exit(1)
+  return await new Promise<ExecReply>(resolve => {
+    let buf = ''
+    c.on('data', d => {
+      buf += d
+      const i = buf.indexOf('\n')
+      if (i < 0) return
+      const res: ExecReply = JSON.parse(buf.slice(0, i))
+      c.end()
+      resolve(res)
+    })
   })
+}
+
+async function send (code: string): Promise<void> {
+  const req: ExecRequest = { id: 1, code, timeout: str(flags.t) ? Number(flags.t) : undefined }
+  const res = await request(req)
+  if (res.ok) { if (res.value !== 'undefined') console.log(res.value); process.exit(0) }
+  console.error(res.error); process.exit(1)
 }
 
 function stop (): void {
@@ -161,11 +168,28 @@ function stop (): void {
   console.log(`sent SIGTERM to ${name} (pid ${p})`)
 }
 
-function status (): void {
+// The daemon outliving its connection is the normal shape of a kick, so report the bot's own
+// state and not just the process: a kicked bot leaves everything else looking healthy.
+async function status (): Promise<void> {
   const p = pid()
   const up = p !== null && alive(p)
-  console.log(`${name}: ${up ? `running pid ${p}` : 'stopped'}  sock=${files.sock}`)
-  process.exit(up ? 0 : 1)
+  if (!up) { console.log(`${name}: stopped  sock=${files.sock}`); process.exit(1) }
+  console.log(`${name}: daemon running pid ${p}  sock=${files.sock}`)
+  let res: ExecReply
+  try { res = await request({ id: 1, status: true } satisfies StatusRequest) } catch (e) {
+    console.log(`bot: unknown (${(e as Error).message})`)
+    process.exit(1)
+  }
+  if (!res.ok) { console.error(res.error); process.exit(1) }
+  const s: BotStatus = JSON.parse(res.value)
+  const at = (v?: { x: number, y: number, z: number }): string =>
+    v ? ` at (${v.x.toFixed(1)}, ${v.y.toFixed(1)}, ${v.z.toFixed(1)})` : ''
+  console.log(`bot: ${s.connected ? 'connected' : 'DISCONNECTED'} as ${s.username} -> ${s.host}:${s.port} (${s.version})`)
+  if (s.connected) console.log(`  since ${s.loginAt}${at(s.position)}${s.health === undefined ? '' : `, health ${s.health}`}`)
+  if (s.lastKick) console.log(`  last kick  ${s.lastKick.at}  ${s.lastKick.reason}`)
+  if (s.lastEnd) console.log(`  last end   ${s.lastEnd.at}  ${s.lastEnd.reason}`)
+  if (s.lastError) console.log(`  last error ${s.lastError.at}  ${s.lastError.message}`)
+  process.exit(s.connected ? 0 : 1)
 }
 
 function logs (): void {
