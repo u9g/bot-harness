@@ -10,7 +10,19 @@ import { Vec3 } from 'vec3'
 import type { DaemonOpts, ExecRequest, ExecReply } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
 
-const require = createRequire(import.meta.url)
+const ownRequire = createRequire(import.meta.url)
+// pnpm gives the harness a strict node_modules, so a bare createRequire here reaches only the
+// harness's own dependencies. Exec'd code wants the Minecraft libraries the bot is built out of
+// (prismarine-chat, prismarine-nbt, minecraft-data, ...), so fall back to mineflayer's resolution.
+const stackRequire = createRequire(ownRequire.resolve('mineflayer'))
+const require = (id: string): unknown => {
+  try {
+    return ownRequire(id)
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw e
+    return stackRequire(id)
+  }
+}
 const { pathfinder, Movements, goals, createHuman } = pathfinderPkg
 
 const opts: DaemonOpts = JSON.parse(process.env.MCBOT_OPTS!)
