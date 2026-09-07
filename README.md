@@ -37,6 +37,8 @@ For a local test server: grab the 26.1 server jar from Mojang's version manifest
 
 Every command except `list` takes the bot's ID first: `start` requires one (1-29 characters, letters, digits, `_`, `-`) and the other commands use it to pick which bot they talk to, so there is no default that two shells could both mean. The in-game username defaults to the ID. `mcbot list` shows every bot in the directory with its server. Extra `--key=value` flags on `start` are passed straight into `createBot` options. Files (pid, socket, log, json info) live in `~/.mcbot`, override with `MCBOT_DIR`.
 
+Once the bot's connection is gone it keeps answering `exec` with whatever state it still holds, so `state` and the packet history stay readable; every reply then carries the reason on stderr (`t1 is disconnected (kicked: ...)`). `reconnect()` clears it.
+
 `-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon.
 
 Layout: `mcbot.ts` is the CLI, `daemon.ts` is the detached process (bot + unix socket eval server), `protocol.ts` is the newline-delimited JSON wire format between them.

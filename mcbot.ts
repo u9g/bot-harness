@@ -157,6 +157,8 @@ async function request (req: Request): Promise<ExecReply> {
 async function send (code: string): Promise<void> {
   const req: ExecRequest = { id: 1, code, timeout: str(flags.t) ? Number(flags.t) : undefined }
   const res = await request(req)
+  // A bot whose connection is gone keeps answering with stale state; say so on stderr.
+  if (res.disconnected !== undefined) console.error(`${name} is disconnected (${res.disconnected})`)
   if (res.ok) { if (res.value !== 'undefined') console.log(res.value); process.exit(0) }
   console.error(res.error); process.exit(1)
 }
