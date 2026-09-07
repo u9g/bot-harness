@@ -12,13 +12,14 @@ pnpm install
 ./mcbot.ts exec t1 'bot.chat("hi"); await bot.waitForTicks(20); return bot.health'   # async fn body
 ./mcbot.ts exec t1 -f script.js                                       # or `-` for stdin
 ./mcbot.ts exec t1 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
+./mcbot.ts exec t1 'await human.walkTo(new Vec3(10, 64, -5))'         # ...or walk it the way a player would
 ./mcbot.ts record t1 start                                            # first-person mp4 of what the bot sees
 ./mcbot.ts record t1 snapshot -o now.png                              # PNG of the latest frame
 ./mcbot.ts record t1 stop                                             # prints the mp4 path
 ./mcbot.ts stop t1
 ```
 
-Exec'd code has these names in scope: `bot`, `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
+Exec'd code has these names in scope: `bot`, `human` (mineflayer-pathfinder's `createHuman(bot)` controller, built on first use: `human.walkTo(goal, { radius, faceAt, timeout })`, `human.lookAt(point)`, `human.stop()`), `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require`, `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options), `log`.
 
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
