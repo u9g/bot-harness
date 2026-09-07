@@ -1,0 +1,178 @@
+const nbt = require('prismarine-nbt')
+module.exports = inject
+
+const difficultyNames = ['peaceful', 'easy', 'normal', 'hard']
+const gameModes = ['survival', 'creative', 'adventure', 'spectator']
+
+const dimensionNames = {
+  '-1': 'the_nether',
+  0: 'overworld',
+  1: 'the_end'
+}
+
+const parseGameMode = gameModeBits => {
+  if (gameModeBits < 0 || gameModeBits > 0b11) {
+    return 'survival'
+  }
+  return gameModes[(gameModeBits & 0b11)] // lower two bits
+}
+
+function inject (bot, options) {
+  function getBrandCustomChannelName () {
+    if (bot.supportFeature('customChannelMCPrefixed')) {
+      return 'MC|Brand'
+    } else if (bot.supportFeature('customChannelIdentifier')) {
+      return 'minecraft:brand'
+    }
+    throw new Error('Unsupported brand channel name')
+  }
+
+  function handleRespawnPacketData (packet) {
+    bot.game.levelType = packet.levelType ?? (packet.isFlat ? 'flat' : 'default')
+    bot.game.hardcore = packet.isHardcore ?? Boolean(packet.gameMode & 0b100)
+    // Either a respawn packet or a login packet. Depending on the packet it can be "gamemode" or "gameMode"
+    if (bot.supportFeature('spawnRespawnWorldDataField')) { // 1.20.5
+      bot.game.gameMode = packet.gamemode
+    } else {
+      bot.game.gameMode = parseGameMode(packet.gamemode ?? packet.gameMode)
+    }
+    if (bot.supportFeature('segmentedRegistryCodecData')) { // 1.20.5
+      if (typeof packet.dimension === 'number') {
+        bot.game.dimension = bot.registry.dimensionsArray[packet.dimension]?.name?.replace('minecraft:', '')
+      } else if (typeof packet.dimension === 'string') { // iirc, in 1.21 it's back to a string
+        bot.game.dimension = packet.dimension.replace('minecraft:', '')
+      }
+    } else if (bot.supportFeature('dimensionIsAnInt')) {
+      bot.game.dimension = dimensionNames[packet.dimension]
+    } else if (bot.supportFeature('dimensionIsAString')) {
+      bot.game.dimension = packet.dimension.replace('minecraft:', '')
+    } else if (bot.supportFeature('dimensionIsAWorld')) {
+      if (bot.supportFeature('dimensionDataInCodec')) {
+        // For 1.19+, we need the dimension TYPE name (not the world/level name) so
+        // the codec lookup succeeds. In login packets the type is "worldType"; in
+        // respawn packets it is "dimension". worldName is the level name which may
+        // differ from the type on proxy/modded servers.
+        const dimType = packet.worldType ?? packet.dimension
+        bot.game.dimension = typeof dimType === 'string'
+          ? dimType.replace('minecraft:', '')
+          : packet.worldName.replace('minecraft:', '')
+      } else {
+        bot.game.dimension = packet.worldName.replace('minecraft:', '')
+      }
+    } else {
+      throw new Error('Unsupported dimension type in login packet')
+    }
+
+    if (packet.dimensionCodec) {
+      bot.registry.loadDimensionCodec(packet.dimensionCodec)
+    }
+
+    bot.game.minY = 0
+    bot.game.height = 256
+
+    if (bot.supportFeature('dimensionDataInCodec')) { // 1.19+
+      const dimData = bot.registry.dimensionsByName[bot.game.dimension]
+      if (dimData) {
+        bot.game.minY = dimData.minY
+        bot.game.height = dimData.height
+      }
+    } else if (bot.supportFeature('dimensionDataIsAvailable')) { // 1.16.2+
+      const dimensionData = nbt.simplify(packet.dimension)
+      bot.game.minY = dimensionData.min_y
+      bot.game.height = dimensionData.height
+    }
+
+    if (packet.difficulty) {
+      bot.game.difficulty = difficultyNames[packet.difficulty]
+    }
+  }
+
+  bot.game = {}
+
+  const brandChannel = getBrandCustomChannelName()
+  bot._client.registerChannel(brandChannel, ['string', []])
+
+  // 1.20.2
+  bot._client.on('registry_data', (packet) => {
+    bot.registry.loadDimensionCodec(packet.codec || packet)
+  })
+
+  bot._client.on('login', (packet) => {
+    handleRespawnPacketData(packet.worldState || packet)
+
+    bot.game.maxPlayers = packet.maxPlayers
+    if (packet.enableRespawnScreen) {
+      bot.game.enableRespawnScreen = packet.enableRespawnScreen
+    }
+    if (packet.viewDistance) {
+      bot.game.serverViewDistance = packet.viewDistance
+    }
+
+    bot.emit('login')
+    bot.emit('game')
+
+    // The brand is sent once per connection: from 1.20.2 node-minecraft-protocol sends it on the
+    // first entry into the configuration state, where the vanilla client sends it after
+    // login_acknowledged. Before the configuration state the client sends it on joining the world.
+    // varint length-prefixed string as data
+    if (!bot.supportFeature('hasConfigurationState')) bot._client.writeChannel(brandChannel, options.brand)
+  })
+
+  bot._client.on('respawn', (packet) => {
+    // in 1.20.5+ protocol we move the shared spawn data into one SpawnInfo type under .worldState
+    handleRespawnPacketData(packet.worldState || packet)
+    bot.emit('game')
+  })
+
+  bot._client.on('game_state_change', (packet) => {
+    if ((packet.reason === 4 || packet.reason === 'win_game') && packet.gameMode === 1) {
+      bot._client.write('client_command', bot.supportFeature('respawnIsPayload') ? { payload: 0 } : { actionId: 0 })
+    }
+    if ((packet.reason === 3) || (packet.reason === 'change_game_mode')) {
+      bot.game.gameMode = parseGameMode(packet.gameMode)
+      bot.emit('game')
+    }
+  })
+
+  bot._client.on('difficulty', (packet) => {
+    bot.game.difficulty = difficultyNames[packet.difficulty]
+  })
+
+  bot._client.on(brandChannel, (serverBrand) => {
+    bot.game.serverBrand = serverBrand
+  })
+
+  // Pongs are written in ping order; each ping is answered exactly once.
+  // In the play state a pong is written only at the start of a physics tick,
+  // before every packet of that tick, or by the one-tick fallback timer.
+  // Outside the play state the pong is written immediately.
+  const pendingPongs = []
+  let pongTimer = null
+
+  function flushPongs () {
+    clearTimeout(pongTimer)
+    pongTimer = null
+    while (pendingPongs.length > 0) {
+      bot._client.write('pong', { id: pendingPongs.shift() })
+    }
+  }
+
+  bot._client.on('ping', (data) => {
+    if (bot._client.state !== 'play') {
+      bot._client.write('pong', { id: data.id })
+      return
+    }
+    pendingPongs.push(data.id)
+    // A queued pong waits at most one tick (50 ms) for a physics tick.
+    if (pongTimer === null) pongTimer = setTimeout(flushPongs, 50)
+  })
+
+  // Must run before every other physicsTick listener.
+  bot.prependListener('physicsTick', flushPongs)
+
+  bot.on('end', () => {
+    clearTimeout(pongTimer)
+    pongTimer = null
+    pendingPongs.length = 0
+  })
+}
