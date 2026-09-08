@@ -5,9 +5,14 @@ const { Entities } = require('./entities')
 const { Primitives } = require('./primitives')
 const { getVersion } = require('./version')
 const { Vec3 } = require('vec3')
+const { defaultHost } = require('./host')
 
 class Viewer {
-  constructor (renderer) {
+  constructor (renderer, options = {}) {
+    if (typeof options === 'number') options = { numWorkers: options }
+    const { host = defaultHost(), numWorkers } = options
+    this.host = host
+
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color('lightblue')
 
@@ -22,9 +27,9 @@ class Viewer {
     const size = renderer.getSize(new THREE.Vector2())
     this.camera = new THREE.PerspectiveCamera(75, size.x / size.y, 0.1, 1000)
 
-    this.world = new WorldRenderer(this.scene)
-    this.entities = new Entities(this.scene)
-    this.primitives = new Primitives(this.scene, this.camera)
+    this.world = new WorldRenderer(this.scene, { host, numWorkers })
+    this.entities = new Entities(this.scene, host)
+    this.primitives = new Primitives(this.scene, this.camera, () => renderer.getSize(new THREE.Vector2()))
 
     this.domElement = renderer.domElement
     this.playerHeight = 1.6
@@ -37,18 +42,22 @@ class Viewer {
     this.primitives.clear()
   }
 
+  dispose () {
+    this.entities.clear()
+    this.primitives.clear()
+    this.world.dispose()
+  }
+
   setVersion (version) {
     const assetsVersion = getVersion(version)
     if (assetsVersion === null) {
-      const msg = `${version} is not supported`
-      window.alert(msg)
-      console.log(msg)
+      console.log(`${version} is not supported`)
       return false
     }
     console.log(`Using version: ${version} (assets: ${assetsVersion})`)
     this.version = version
     this.world.setVersion(version, assetsVersion)
-    this.entities.clear()
+    this.entities.setVersion(assetsVersion)
     this.primitives.clear()
     return true
   }
@@ -102,16 +111,14 @@ class Viewer {
     emitter.on('blockUpdate', ({ pos, stateId }) => {
       this.setBlockStateId(new Vec3(pos.x, pos.y, pos.z), stateId)
     })
+  }
 
-    this.domElement.addEventListener('pointerdown', (evt) => {
-      const raycaster = new THREE.Raycaster()
-      const mouse = new THREE.Vector2()
-      mouse.x = (evt.clientX / this.domElement.clientWidth) * 2 - 1
-      mouse.y = -(evt.clientY / this.domElement.clientHeight) * 2 + 1
-      raycaster.setFromCamera(mouse, this.camera)
-      const ray = raycaster.ray
-      emitter.emit('mouseClick', { origin: ray.origin, direction: ray.direction, button: evt.button })
-    })
+  // The camera ray through a point of the view, x and y in [-1, 1] (right and
+  // up positive). What a click handler emits as mouseClick to the WorldView.
+  pickRay (x, y) {
+    const raycaster = new THREE.Raycaster()
+    raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera)
+    return { origin: raycaster.ray.origin, direction: raycaster.ray.direction }
   }
 
   update () {
@@ -122,6 +129,12 @@ class Viewer {
 
   async waitForChunksToRender () {
     await this.world.waitForChunksToRender()
+  }
+
+  // Resolves once the block atlas is uploaded and the queued chunks are meshed,
+  // so the next render is fully textured. Call after listen()/init().
+  async waitForReady () {
+    await this.world.waitForReady()
   }
 }
 

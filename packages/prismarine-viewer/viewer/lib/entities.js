@@ -2,32 +2,28 @@ const THREE = require('three')
 const TWEEN = require('@tweenjs/tween.js')
 
 const Entity = require('./entity/Entity')
+const { getItemMesh, animateItem } = require('./entity/Item')
 const { dispose3 } = require('./dispose')
+const { defaultHost } = require('./host')
 
-const { createCanvas } = require('canvas')
-
-function getEntityMesh (entity, scene) {
+function getEntityMesh (entity, scene, host, version) {
+  // A dropped item is its own item's model, and the stack only arrives after the spawn.
+  if (entity.itemName) return getItemMesh(entity.itemName, version)
+  if (entity.name === 'item') return null
   if (entity.name) {
     try {
       const textures = {}
       if (entity.skin) textures.default = entity.skin
       if (entity.cape) textures.cape = entity.cape
       const model = entity.name === 'player' && entity.skinModel === 'slim' ? 'player_slim' : entity.name
-      const e = new Entity('1.16.4', model, scene, textures)
+      const e = new Entity('1.16.4', model, scene, textures, host)
 
-      if (entity.username !== undefined) {
-        const canvas = createCanvas(500, 100)
-
-        const ctx = canvas.getContext('2d')
-        ctx.font = '50pt Arial'
-        ctx.fillStyle = '#000000'
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'top'
-
-        const txt = entity.username
-        ctx.fillText(txt, 100, 0)
-
-        const tex = new THREE.Texture(canvas)
+      const label = entity.username !== undefined && host.renderText && host.renderText(entity.username)
+      if (label) {
+        const tex = new THREE.DataTexture(label.data, label.width, label.height, THREE.RGBAFormat)
+        tex.magFilter = THREE.LinearFilter
+        tex.minFilter = THREE.LinearFilter
+        tex.flipY = true
         tex.needsUpdate = true
         const spriteMat = new THREE.SpriteMaterial({ map: tex })
         const sprite = new THREE.Sprite(spriteMat)
@@ -96,19 +92,26 @@ function animateWalk (mesh, ticks) {
 }
 
 class Entities {
-  constructor (scene) {
+  constructor (scene, host = defaultHost()) {
     this.scene = scene
+    this.host = host
     this.entities = {}
-    this.lastAnimate = performance.now()
+    this.lastAnimate = host.now()
+  }
+
+  setVersion (version) {
+    this.version = version
+    this.clear()
   }
 
   animate () {
-    const now = performance.now()
+    const now = this.host.now()
     const ticks = (now - this.lastAnimate) / 50
     this.lastAnimate = now
     if (ticks === 0) return
     for (const mesh of Object.values(this.entities)) {
       if (mesh.walk) animateWalk(mesh, ticks)
+      if (mesh.item) animateItem(mesh, ticks)
     }
   }
 
@@ -121,10 +124,18 @@ class Entities {
   }
 
   update (entity) {
+    // A dropped item's stack arrives after its spawn and can change; its mesh is that stack's model.
+    const known = this.entities[entity.id]
+    if (known && entity.itemName !== undefined && known.itemName !== entity.itemName) {
+      this.scene.remove(known)
+      dispose3(known)
+      delete this.entities[entity.id]
+    }
     if (!this.entities[entity.id]) {
       if (!entity.pos) return
-      const mesh = getEntityMesh(entity, this.scene)
+      const mesh = getEntityMesh(entity, this.scene, this.host, this.version)
       if (!mesh) return
+      mesh.itemName = entity.itemName
       this.entities[entity.id] = mesh
       this.scene.add(mesh)
       if (entity.pos) mesh.position.set(entity.pos.x, entity.pos.y, entity.pos.z)

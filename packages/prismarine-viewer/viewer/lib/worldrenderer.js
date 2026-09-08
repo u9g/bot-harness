@@ -1,26 +1,35 @@
-/* global Worker */
 const THREE = require('three')
 const Vec3 = require('vec3').Vec3
-const { loadTexture, loadJSON } = globalThis.isElectron ? require('./utils.electron.js') : require('./utils')
 const { EventEmitter } = require('events')
 const { dispose3 } = require('./dispose')
+const { defaultHost } = require('./host')
+const { loadTexture } = require('./textures')
 
 function mod (x, n) {
   return ((x % n) + n) % n
 }
 
 class WorldRenderer {
-  constructor (scene, numWorkers = 4) {
+  constructor (scene, options = {}) {
+    if (typeof options === 'number') options = { numWorkers: options }
+    const { host = defaultHost(), numWorkers = 4 } = options
+    this.host = host
     this.sectionMeshs = {}
     this.active = false
     this.version = undefined
     this.assetsVersion = undefined
+    // World Y bounds, fetched per version in setVersion. Defaults match pre-1.18.
+    this.minY = 0
+    this.worldHeight = 256
+    this.boundsReady = Promise.resolve()
     this.scene = scene
     this.loadedChunks = {}
     this.sectionsOutstanding = new Set()
     this.renderUpdateEmitter = new EventEmitter()
     this.blockStatesData = undefined
     this.texturesDataUrl = undefined
+    // Resolves when the block atlas is uploaded; replaced per setVersion.
+    this.texturesLoaded = Promise.resolve()
 
     this.material = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, alphaTest: 0.1 })
     // Animated textures are packed as vertical runs of tiles; each vertex
@@ -35,44 +44,46 @@ class WorldRenderer {
 
     this.workers = []
     for (let i = 0; i < numWorkers; i++) {
-      // Node environement needs an absolute path, but browser needs the url of the file
-      let src = __dirname
-      if (typeof window !== 'undefined') src = 'worker.js'
-      else src += '/worker.js'
-
-      const worker = new Worker(src)
-      worker.onmessage = ({ data }) => {
-        if (data.type === 'geometry') {
-          let mesh = this.sectionMeshs[data.key]
-          if (mesh) {
-            this.scene.remove(mesh)
-            dispose3(mesh)
-            delete this.sectionMeshs[data.key]
-          }
-
-          const chunkCoords = data.key.split(',')
-          if (!this.loadedChunks[chunkCoords[0] + ',' + chunkCoords[2]]) return
-
-          const geometry = new THREE.BufferGeometry()
-          geometry.setAttribute('position', new THREE.BufferAttribute(data.geometry.positions, 3))
-          geometry.setAttribute('normal', new THREE.BufferAttribute(data.geometry.normals, 3))
-          geometry.setAttribute('color', new THREE.BufferAttribute(data.geometry.colors, 3))
-          geometry.setAttribute('uv', new THREE.BufferAttribute(data.geometry.uvs, 2))
-          geometry.setAttribute('animation', new THREE.BufferAttribute(data.geometry.animations, 2))
-          geometry.setIndex(data.geometry.indices)
-
-          mesh = new THREE.Mesh(geometry, this.material)
-          mesh.position.set(data.geometry.sx, data.geometry.sy, data.geometry.sz)
-          this.sectionMeshs[data.key] = mesh
-          this.scene.add(mesh)
-        } else if (data.type === 'sectionFinished') {
-          this.sectionsOutstanding.delete(data.key)
-          this.renderUpdateEmitter.emit('update')
-        }
-      }
-      if (worker.on) worker.on('message', (data) => { worker.onmessage({ data }) })
+      const worker = host.createWorker()
+      worker.onMessage((data) => this.onWorkerMessage(data))
       this.workers.push(worker)
     }
+  }
+
+  onWorkerMessage (data) {
+    if (data.type === 'geometry') {
+      let mesh = this.sectionMeshs[data.key]
+      if (mesh) {
+        this.scene.remove(mesh)
+        dispose3(mesh)
+        delete this.sectionMeshs[data.key]
+      }
+
+      const chunkCoords = data.key.split(',')
+      if (!this.loadedChunks[chunkCoords[0] + ',' + chunkCoords[2]]) return
+
+      const geometry = new THREE.BufferGeometry()
+      geometry.setAttribute('position', new THREE.BufferAttribute(data.geometry.positions, 3))
+      geometry.setAttribute('normal', new THREE.BufferAttribute(data.geometry.normals, 3))
+      geometry.setAttribute('color', new THREE.BufferAttribute(data.geometry.colors, 3))
+      geometry.setAttribute('uv', new THREE.BufferAttribute(data.geometry.uvs, 2))
+      geometry.setAttribute('animation', new THREE.BufferAttribute(data.geometry.animations, 2))
+      geometry.setIndex(data.geometry.indices)
+
+      mesh = new THREE.Mesh(geometry, this.material)
+      mesh.position.set(data.geometry.sx, data.geometry.sy, data.geometry.sz)
+      this.sectionMeshs[data.key] = mesh
+      this.scene.add(mesh)
+    } else if (data.type === 'sectionFinished') {
+      this.sectionsOutstanding.delete(data.key)
+      this.renderUpdateEmitter.emit('update')
+    }
+  }
+
+  dispose () {
+    this.resetWorld()
+    for (const worker of this.workers) worker.terminate()
+    this.workers = []
   }
 
   resetWorld () {
@@ -89,6 +100,14 @@ class WorldRenderer {
   setVersion (version, assetsVersion = version) {
     this.version = version
     this.assetsVersion = assetsVersion
+    this.boundsReady = new Promise(resolve => {
+      loadJSON('worldBounds.json', (bounds) => {
+        const { minY = 0, worldHeight = 256 } = bounds[version] ?? {}
+        this.minY = minY
+        this.worldHeight = worldHeight
+        resolve()
+      })
+    })
     this.resetWorld()
     this.active = true
     for (const worker of this.workers) {
@@ -99,30 +118,28 @@ class WorldRenderer {
   }
 
   updateTexturesData () {
-    loadTexture(this.texturesDataUrl || `textures/${this.assetsVersion}.png`, texture => {
-      texture.magFilter = THREE.NearestFilter
-      texture.minFilter = THREE.NearestFilter
-      texture.flipY = false
+    // waitForReady awaits this; the mesher already gates on the block states message.
+    this.texturesLoaded = loadTexture(this.host, this.texturesDataUrl || `textures/${this.assetsVersion}.png`).then(texture => {
+      if (!texture) return
       this.uniforms.tileHeight.value = 16 / texture.image.height
       this.material.map = texture
       this.material.needsUpdate = true
     })
 
-    const loadBlockStates = () => {
-      return new Promise(resolve => {
-        if (this.blockStatesData) return resolve(this.blockStatesData)
-        return loadJSON(`blocksStates/${this.assetsVersion}.json`, resolve)
-      })
-    }
-    loadBlockStates().then((blockStates) => {
+    // Only the mesher reads the block states, and parsing them here would block for as long as
+    // the file is big (150 ms for 26.1), so the text goes to the workers unparsed.
+    const blockStates = this.blockStatesData
+      ? Promise.resolve({ json: this.blockStatesData })
+      : this.host.loadText(`blocksStates/${this.assetsVersion}.json`).then(text => ({ text }))
+    blockStates.then((message) => {
       for (const worker of this.workers) {
-        worker.postMessage({ type: 'blockStates', json: blockStates })
+        worker.postMessage({ type: 'blockStates', ...message })
       }
     })
   }
 
   update () {
-    this.uniforms.time.value = performance.now() / 50
+    this.uniforms.time.value = this.host.now() / 50
   }
 
   addColumn (x, z, chunk, minY = 0, worldHeight = 256) {
@@ -130,14 +147,18 @@ class WorldRenderer {
     for (const worker of this.workers) {
       worker.postMessage({ type: 'chunk', x, z, chunk })
     }
-    for (let y = minY; y < minY + worldHeight; y += 16) {
-      const loc = new Vec3(x, y, z)
-      this.setSectionDirty(loc)
-      this.setSectionDirty(loc.offset(-16, 0, 0))
-      this.setSectionDirty(loc.offset(16, 0, 0))
-      this.setSectionDirty(loc.offset(0, 0, -16))
-      this.setSectionDirty(loc.offset(0, 0, 16))
-    }
+    // The worker cannot mesh anything until blockStates lands, so waiting on the
+    // bounds fetch here costs no rendering latency.
+    this.boundsReady.then(() => {
+      for (let y = minY; y < minY + worldHeight; y += 16) {
+        const loc = new Vec3(x, y, z)
+        this.setSectionDirty(loc)
+        this.setSectionDirty(loc.offset(-16, 0, 0))
+        this.setSectionDirty(loc.offset(16, 0, 0))
+        this.setSectionDirty(loc.offset(0, 0, -16))
+        this.setSectionDirty(loc.offset(0, 0, 16))
+      }
+    })
   }
 
   removeColumn (x, z) {
@@ -146,16 +167,18 @@ class WorldRenderer {
     for (const worker of this.workers) {
       worker.postMessage({ type: 'unloadChunk', x, z })
     }
-    for (let y = minY; y < minY + worldHeight; y += 16) {
-      this.setSectionDirty(new Vec3(x, y, z), false)
-      const key = `${x},${y},${z}`
-      const mesh = this.sectionMeshs[key]
-      if (mesh) {
-        this.scene.remove(mesh)
-        dispose3(mesh)
+    this.boundsReady.then(() => {
+      for (let y = minY; y < minY + worldHeight; y += 16) {
+        this.setSectionDirty(new Vec3(x, y, z), false)
+        const key = `${x},${y},${z}`
+        const mesh = this.sectionMeshs[key]
+        if (mesh) {
+          this.scene.remove(mesh)
+          dispose3(mesh)
+        }
+        delete this.sectionMeshs[key]
       }
-      delete this.sectionMeshs[key]
-    }
+    })
   }
 
   setBlockStateId (pos, stateId) {
@@ -176,8 +199,9 @@ class WorldRenderer {
     // This guarantees uniformity accross workers and that a given section
     // is always dispatched to the same worker
     const hash = mod(Math.floor(pos.x / 16) + Math.floor(pos.y / 16) + Math.floor(pos.z / 16), this.workers.length)
-    this.workers[hash].postMessage({ type: 'dirty', x: pos.x, y: pos.y, z: pos.z, value })
+    // outstanding before the post: an inline worker answers synchronously
     this.sectionsOutstanding.add(`${Math.floor(pos.x / 16) * 16},${Math.floor(pos.y / 16) * 16},${Math.floor(pos.z / 16) * 16}`)
+    this.workers[hash].postMessage({ type: 'dirty', x: pos.x, y: pos.y, z: pos.z, value })
   }
 
   // Listen for chunk rendering updates emitted if a worker finished a render and resolve if the number
@@ -197,6 +221,13 @@ class WorldRenderer {
       }
       this.renderUpdateEmitter.on('update', updateHandler)
     })
+  }
+
+  // Call after listen()/init() have queued chunks. waitForChunksToRender only tracks
+  // the mesher; a frame before material.map is set renders untextured geometry.
+  async waitForReady () {
+    await this.texturesLoaded
+    await this.waitForChunksToRender()
   }
 }
 

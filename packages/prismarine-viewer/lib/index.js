@@ -38,11 +38,17 @@ window.addEventListener('resize', () => {
 
 socket.on('version', (version) => {
   if (!viewer.setVersion(version)) {
+    window.alert(`${version} is not supported`)
     return false
   }
 
   firstPositionUpdate = true
   viewer.listen(socket)
+  renderer.domElement.addEventListener('pointerdown', (evt) => {
+    const x = (evt.clientX / renderer.domElement.clientWidth) * 2 - 1
+    const y = -(evt.clientY / renderer.domElement.clientHeight) * 2 + 1
+    socket.emit('mouseClick', { ...viewer.pickRay(x, y), button: evt.button })
+  })
 
   let botMesh
   socket.on('position', ({ pos, addMesh, yaw, pitch }) => {
@@ -62,7 +68,7 @@ socket.on('version', (version) => {
     }
     if (addMesh) {
       if (!botMesh) {
-        botMesh = new Entity('1.16.4', 'player', viewer.scene).mesh
+        botMesh = new Entity('1.16.4', 'player', viewer.scene, {}, viewer.host).mesh
         viewer.scene.add(botMesh)
       }
       new TWEEN.Tween(botMesh.position).to({ x: pos.x, y: pos.y, z: pos.z }, 50).start()

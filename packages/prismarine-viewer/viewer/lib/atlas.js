@@ -40,6 +40,15 @@ function readAnimation (basePath, name, img) {
   }
 }
 
+function loadImage (basePath, name) {
+  const img = new Image()
+  img.src = 'data:image/png;base64,' + readTexture(basePath, name)
+  return img
+}
+
+// Tiles keep their native resolution (26.1 ships 32x32 block textures);
+// each atlas entry carries its own u/v/su/sv extents, so consumers such as
+// modelsBuilder are resolution-agnostic.
 function makeTextureAtlas (mcAssets) {
   const blocksTexturePath = path.join(mcAssets.directory, '/blocks')
   const textureFiles = fs.readdirSync(blocksTexturePath).filter(file => file.endsWith('.png'))
@@ -47,45 +56,67 @@ function makeTextureAtlas (mcAssets) {
 
   const tileSize = 16
 
-  const textures = textureFiles.map(file => {
-    const img = new Image()
-    img.src = 'data:image/png;base64,' + readTexture(blocksTexturePath, file)
+  const tiles = textureFiles.map(file => {
+    const img = loadImage(blocksTexturePath, file)
     const animation = readAnimation(blocksTexturePath, file, img)
-    return { name: file.split('.')[0], img, animation, frames: animation ? animation.frames : [0], frameHeight: animation ? animation.frameHeight : tileSize }
+    return {
+      name: file.split('.')[0],
+      img,
+      animation,
+      frames: animation ? animation.frames : [0],
+      w: img.width,
+      // animated textures are vertical filmstrips (e.g. 16x512 = 32 frames)
+      // of native-width square frames; all frames are baked into the atlas
+      // (see readAnimation) and a model's UVs address a single frame
+      frameHeight: animation ? animation.frameHeight : img.height,
+      h: animation ? animation.frames.length * animation.frameHeight : img.height
+    }
   })
 
-  // Each texture takes a vertical run of tiles (one per frame). Tallest first,
-  // each into the currently shortest column, so strips never straddle columns.
-  const tileCount = textures.reduce((n, tex) => n + tex.frames.length, 0)
-  const texSize = nextPowerOfTwo(Math.ceil(Math.sqrt(tileCount)))
-  const columns = new Array(texSize).fill(0)
-  textures.sort((a, b) => b.frames.length - a.frames.length)
-  for (const tex of textures) {
-    const col = columns.indexOf(Math.min(...columns))
-    tex.x = col * tileSize
-    tex.y = columns[col] * tileSize
-    columns[col] += tex.frames.length
+  // shelf-pack: sort by height, lay out rows, then round the atlas up to a
+  // power of two. Each texture — including a full vertical run of animation
+  // frames — is placed as a single rectangle, so runs never straddle rows.
+  const totalArea = tiles.reduce((a, t) => a + t.w * t.h, 0)
+  const maxWidth = Math.max(...tiles.map(t => t.w))
+  const width = nextPowerOfTwo(Math.max(maxWidth, Math.ceil(Math.sqrt(totalArea))))
+  tiles.sort((a, b) => b.h - a.h)
+
+  let shelfX = 0
+  let shelfY = 0
+  let shelfH = 0
+  let packedHeight = 0
+  const texturesIndex = {}
+  for (const tile of tiles) {
+    if (shelfX + tile.w > width) {
+      shelfX = 0
+      shelfY += shelfH
+      shelfH = 0
+    }
+    tile.x = shelfX
+    tile.y = shelfY
+    shelfX += tile.w
+    shelfH = Math.max(shelfH, tile.h)
+    packedHeight = Math.max(packedHeight, shelfY + tile.h)
+  }
+  const height = nextPowerOfTwo(packedHeight)
+
+  for (const tile of tiles) {
+    texturesIndex[tile.name] = { u: tile.x / width, v: tile.y / height, su: tile.w / width, sv: tile.frameHeight / height }
+    if (tile.animation) {
+      texturesIndex[tile.name].frames = tile.frames.length
+      texturesIndex[tile.name].frametime = tile.animation.frametime
+    }
   }
 
-  const imgWidth = texSize * tileSize
-  const imgHeight = nextPowerOfTwo(Math.max(...columns) * tileSize)
-  const canvas = new Canvas(imgWidth, imgHeight, 'png')
+  const canvas = new Canvas(width, height, 'png')
   const g = canvas.getContext('2d')
-
-  const texturesIndex = {}
-
-  for (const tex of textures) {
-    texturesIndex[tex.name] = { u: tex.x / imgWidth, v: tex.y / imgHeight, su: tileSize / imgWidth, sv: tileSize / imgHeight }
-    if (tex.animation) {
-      texturesIndex[tex.name].frames = tex.frames.length
-      texturesIndex[tex.name].frametime = tex.animation.frametime
-    }
-    tex.frames.forEach((frame, i) => {
-      g.drawImage(tex.img, 0, frame * tex.frameHeight, tileSize, tileSize, tex.x, tex.y + i * tileSize, tileSize, tileSize)
+  for (const tile of tiles) {
+    tile.frames.forEach((frame, i) => {
+      g.drawImage(tile.img, 0, frame * tile.frameHeight, tile.w, tile.frameHeight, tile.x, tile.y + i * tile.frameHeight, tile.w, tile.frameHeight)
     })
   }
 
-  return { image: canvas.toBuffer(), canvas, json: { tileSize, width: imgWidth, height: imgHeight, textures: texturesIndex } }
+  return { image: canvas.toBuffer(), canvas, json: { tileSize, width, height, textures: texturesIndex } }
 }
 
 module.exports = {
