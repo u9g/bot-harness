@@ -69,7 +69,17 @@ function ffmpeg (args: string[]): { proc: ChildProcess, done: Promise<void> } {
 export async function startRecording (bot: Bot, file: string, opts: RecordOpts = {}): Promise<Recording> {
   const { width = 640, height = 360, fps = 20, viewDistance = 4, numWorkers = 1, duty = 0.25 } = opts
   await ensureDisplay(width, height)
-  if (!bot.entity) await new Promise<void>(resolve => bot.once('spawn', resolve))
+  // A bot whose connection has closed still has its last entity and world, and they never change again.
+  // `ended` is also true on a client that has not connected yet; that one has no socket.
+  if (bot._client.ended && bot._client.socket !== undefined) throw new Error('the bot is disconnected; nothing to record')
+  if (!bot.entity) {
+    await new Promise<void>((resolve, reject) => {
+      const onSpawn = (): void => { bot.off('end', onEnd); resolve() }
+      const onEnd = (reason: string): void => { bot.off('spawn', onSpawn); reject(new Error(`the bot ended before spawning (${reason}); nothing to record`)) }
+      bot.once('spawn', onSpawn)
+      bot.once('end', onEnd)
+    })
+  }
 
   const THREE = require('three')
   const createContext = require('gl')
