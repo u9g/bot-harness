@@ -9,6 +9,7 @@ import pathfinderPkg from 'mineflayer-pathfinder'
 import { Vec3 } from 'vec3'
 import type { BotStatus, DaemonOpts, ExecRequest, ExecReply, Request, StatusRequest } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
+import { placeInOwnCgroup } from './cgroup.ts'
 
 const ownRequire = createRequire(import.meta.url)
 // pnpm gives the harness a strict node_modules, so a bare createRequire here reaches only the
@@ -29,6 +30,15 @@ const opts: DaemonOpts = JSON.parse(process.env.MCBOT_OPTS!)
 const botOpts = opts.bot as BotOptions
 
 const log = (...a: unknown[]): void => console.log(new Date().toISOString(), ...a)
+
+// Cap the bot before it starts allocating. A leak inside its own cgroup is a local OOM kill; the
+// same leak outside one took the whole machine down with it.
+try {
+  const scope = placeInOwnCgroup(opts.name)
+  log(scope === null ? 'no user systemd, running uncapped' : `cgroup ${scope}`)
+} catch (e) {
+  log('could not create cgroup, running uncapped:', e instanceof Error ? e.message : e)
+}
 
 /** Persists across exec calls; scripts can stash anything here. */
 const state: Record<string, unknown> = {}
