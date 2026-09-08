@@ -126,7 +126,12 @@ const stamp = (): string => new Date().toISOString().replace(/[:.]/g, '-').slice
 const record = {
   async start (file = path.join(opts.dir, `${opts.name}-${stamp()}.mp4`), recordOpts?: RecordOpts): Promise<string> {
     if (recording) throw new Error(`already recording to ${recording.file}`)
-    recording = await startRecording(bot, path.resolve(file), recordOpts)
+    const target = path.resolve(file)
+    recording = await startRecording(bot, target, recordOpts, err => {
+      // ffmpeg went away on its own; the file is done, so drop the recording the daemon holds.
+      if (recording?.file === target) recording = null
+      log('recording ended', target, err.message)
+    })
     log('recording', recording.file)
     return recording.file
   },
