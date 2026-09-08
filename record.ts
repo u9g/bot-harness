@@ -113,6 +113,27 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   follow()
   bot.on('move', follow)
 
+  // A server transfer or dimension change makes mineflayer unload every column of the bot's world
+  // (bot.world is mutated in place, not replaced). WorldView has no chunkColumnUnload listener, so
+  // it keeps the pre-transfer geometry and never meshes the new world. login precedes the swap and
+  // the following spawn is when bot.entity and the new columns are ready, so resync there: drop the
+  // chunks the viewer still holds and reload from the current world. (Superseded once
+  // prismarine-viewer handles the unload itself.)
+  let reloginPending = false
+  const onLogin = (): void => { reloginPending = true }
+  const onSpawn = (): void => {
+    if (!reloginPending) return
+    reloginPending = false
+    const wv = worldView as unknown as { loadedChunks: Record<string, boolean>, unloadChunk: (p: { x: number, z: number }) => void }
+    for (const key of Object.keys(wv.loadedChunks)) {
+      const [x, z] = key.split(',').map(Number)
+      wv.unloadChunk({ x, z })
+    }
+    void worldView.init(bot.entity.position)
+  }
+  bot.on('login', onLogin)
+  bot.on('spawn', onSpawn)
+
   // Frames before the atlas uploads and chunks mesh are blank sky. The first frame is
   // deferred until the atlas is set, some sections are meshed, and none are outstanding.
   const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
@@ -147,6 +168,8 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   let stopping = false
   const teardown = (): void => {
     bot.off('move', follow)
+    bot.off('login', onLogin)
+    bot.off('spawn', onSpawn)
     worldView.removeListenersFromBot(bot)
     try { viewer.dispose() } catch {}
     destroyGl()
@@ -214,6 +237,8 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
       // ffmpeg already gone on its own: teardown ran, nothing left to close.
       if (ended !== null) return file
       bot.off('move', follow)
+      bot.off('login', onLogin)
+      bot.off('spawn', onSpawn)
       worldView.removeListenersFromBot(bot)
       // Closing ffmpeg's stdin writes the moov atom; it must run even if GL teardown throws.
       stdin.end()
