@@ -847,9 +847,7 @@ function inject (bot) {
 
   bot.swingArm = swingArm
   bot.attack = attack
-  bot.mount = mount
   bot.dismount = dismount
-  bot.useOn = useOn
   bot.moveVehicle = moveVehicle
 
   function swingArm (arm = 'right', showHand = true) {
@@ -859,10 +857,10 @@ function inject (bot) {
     bot._client.write('arm_animation', packet)
   }
 
-  function useOn (target) {
-    // TODO: check if not crouching will make make this action always use the item
-    useEntity(target, 0)
-  }
+  // An attack carries no hit location, only the sneak state; 26.1 moved it to its own packet.
+  const attackEntity = bot.supportFeature('attackUsesOwnPacket')
+    ? (target) => bot._client.write('attack', { entityId: target.id })
+    : (target) => bot._client.write('use_entity', { target: target.id, mouse: 1, sneaking: bot.getControlState('sneak') })
 
   function attack (target, swing = true) {
     // The server kicks a client that attacks itself, an item or an experience orb
@@ -875,18 +873,13 @@ function inject (bot) {
       if (swing) {
         swingArm()
       }
-      useEntity(target, 1)
+      attackEntity(target)
     } else {
-      useEntity(target, 1)
+      attackEntity(target)
       if (swing) {
         swingArm()
       }
     }
-  }
-
-  function mount (target) {
-    // TODO: check if crouching will make make this action always mount
-    useEntity(target, 0)
   }
 
   function moveVehicle (left, forward) {
@@ -930,32 +923,6 @@ function inject (bot) {
         sideways: 0.0,
         forward: 0.0,
         jump: 0x02 // unmount flag
-      })
-    }
-  }
-
-  function useEntity (target, leftClick, x, y, z) {
-    const sneaking = bot.getControlState('sneak')
-    if (leftClick && bot.supportFeature('attackUsesOwnPacket')) {
-      bot._client.write('attack', {
-        entityId: target.id
-      })
-    } else if (x && y && z) {
-      bot._client.write('use_entity', {
-        target: target.id,
-        mouse: leftClick,
-        x,
-        y,
-        z,
-        sneaking,
-        location: new Vec3(x, y, z)
-      })
-    } else {
-      bot._client.write('use_entity', {
-        target: target.id,
-        mouse: leftClick,
-        sneaking,
-        location: new Vec3(0, 0, 0)
       })
     }
   }

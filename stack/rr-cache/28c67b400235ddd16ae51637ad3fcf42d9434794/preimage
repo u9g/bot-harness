@@ -1,0 +1,59 @@
+<<<<<<<
+/* global document */
+// Deprecated: the viewer loads through a host now (see ./host). Kept for code
+// that imported these loaders directly.
+const THREE = require('three')
+const { createBrowserHost } = require('./host/browser')
+const { loadTexture: load } = require('./textures')
+
+let host
+function getHost () {
+  if (!host) host = createBrowserHost()
+  return host
+}
+=======
+// Deprecated: the viewer loads through a host now (see ./host). Kept for code
+// that imported these loaders directly.
+const { createBrowserHost } = require('./host/browser')
+const { loadTexture: load } = require('./textures')
+>>>>>>>
+
+<<<<<<<
+function loadTexture (texture, cb) {
+  load(getHost(), texture).then(texture => { if (texture) cb(texture) })
+=======
+let host
+function getHost () {
+  if (!host) host = createBrowserHost()
+  return host
+>>>>>>>
+}
+
+<<<<<<<
+const pixelCache = {}
+function loadPixels (texture, cb) {
+  if (!pixelCache[texture]) {
+    pixelCache[texture] = new Promise(resolve => new THREE.TextureLoader().load(texture, ({ image }) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = image.width
+      canvas.height = image.height
+      canvas.getContext('2d').drawImage(image, 0, 0)
+      resolve(canvas.getContext('2d').getImageData(0, 0, image.width, image.height))
+    }))
+  }
+  pixelCache[texture].then(cb)
+=======
+function loadTexture (texture, cb) {
+  load(getHost(), texture).then(texture => { if (texture) cb(texture) })
+}
+
+function loadJSON (json, cb) {
+  getHost().loadJSON(json).then(cb)
+>>>>>>>
+}
+
+function loadJSON (json, cb) {
+  getHost().loadJSON(json).then(cb)
+}
+
+module.exports = { loadTexture, loadPixels, loadJSON }

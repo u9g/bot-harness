@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
-      "tip": "034e3561144666420dd87271f929e70e3ce65313",
+      "tip": "864d94e53b71d8a7ccdae4ea9dbd5d770e44edc0",
       "tree": "f76ba19d68c3cb38ea491bb78e01fade6d856489",
       "prs": [
         {
@@ -48,7 +48,7 @@
       "repo": "ProtoDef-io/ProtoDef",
       "base": "master",
       "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
-      "tip": "ae3402e0de0645fa32657e87ca1a2bb5090033d0",
+      "tip": "b1d2065d7d1a0566332f7dbd731330765e90707b",
       "tree": "648e591b6f4d638861def62feb39d45c2e7f3175",
       "prs": [
         {
@@ -72,7 +72,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "df9cae544f997625be2baef3666206d6abfc9cb8",
+      "tip": "d9ea12e98ec1a6ac1f2fcfb0defd5c455d6b1767",
       "tree": "0a2490ab36cb11e5f8ae91c105b9d4efdd6ed646",
       "prs": [
         {
@@ -95,7 +95,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "ac7854f2da82d11a5bddc0ee61aa8b120380b4de",
-      "tip": "b758e6ad3dc4b6e75f64d1cf2cdd1cc692041c2c",
+      "tip": "900f6bafee4b6cf37763d2e4358991de79fede6f",
       "tree": "6fb18080893b0db43f19fa8206af40c106c4c1e1",
       "prs": [
         {
@@ -146,7 +146,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "b48befe71e680350882ae2ae81404cf327612023",
+      "tip": "25a40558db58c04d84ca180021a28ef3bb0f75d2",
       "tree": "f2aa74093db1234783194f6c533b238fd88f8213",
       "prs": [
         {
@@ -162,7 +162,7 @@
       "repo": "PrismarineJS/prismarine-physics",
       "base": "master",
       "baseSha": "a5353a922f1dee075aa797cb53be31919f9e1f46",
-      "tip": "19251e7f7f5ff3ffba402980ae0efdb96ca22bff",
+      "tip": "489a7b3ffc0fc541243329dcbf3c65f363562340",
       "tree": "4e46dbcc416832deaf2691dc560c3a2b0b342208",
       "prs": [
         {
@@ -178,8 +178,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "1522556cb781c415f401f7b81844acd5125ab30b",
-      "tree": "b21994f208fe538e720639a1a79da58fb8430520",
+      "tip": "a0c37fe49f05f127a9720cdb246d9b0acb25f5f6",
+      "tree": "682ed69518cdcd10d44d46e87f5cf33a29cdf136",
       "prs": [
         {
           "number": 4021,
@@ -242,8 +242,7 @@
           "title": "fix: drop the physics tick backlog after an event-loop stall instead of draining it",
           "head": "47b1b39a0a48260ccd8ccaca0af17b078c80338b",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4069,
@@ -320,16 +319,14 @@
           "title": "Track the abilities the server grants",
           "head": "caf2555bfbc6be3ac1bf074f4ecbda36978fbc51",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4085,
           "title": "Share one pre-incremented block prediction sequence across dig, use_item_on and use_item",
           "head": "4d203cbf7c79676400f734a7d9d8d50a6e38b63a",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4086,
@@ -343,8 +340,7 @@
           "title": "Report resource packs as ACCEPTED, DOWNLOADED, SUCCESSFULLY_LOADED and deny once",
           "head": "dc290378d252dda9026c5183e2dd2431a58e1ae5",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4088,
@@ -358,8 +354,7 @@
           "title": "activateEntity: send the vanilla interact pair with the real sneak state and hit point",
           "head": "5c912cd25018530584018e2465258ceddd1b7b83",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4090,
@@ -373,8 +368,7 @@
           "title": "Swing the arm after use_item_on when placing, not before",
           "head": "8b4b1476c87f86398a2ca12703084586946b7ca7",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4092,
@@ -395,16 +389,14 @@
           "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
           "head": "53a2bf0821fac569b2b063967f10a79394c98cbb",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         },
         {
           "number": 4095,
           "title": "Right-click entities through one path, so useOn and mount send the vanilla pair",
           "head": "a35c1ff1a0da8d668289e03f5312f4486e4f5919",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "no resolver for test/internalTest.js"
+          "status": "resolved-ai"
         }
       ]
     },
@@ -412,7 +404,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "84da0cbb8f99acbf64b650aa1a8700ec95e6c0c6",
+      "tip": "3825df1aa6937cae9584e4f8ca97ff7b533d6798",
       "tree": "c5358aa6ce24f5c284ab774ce0bb3fdd4e9d5c90",
       "prs": [
         {
@@ -435,23 +427,22 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "b25db63ce7c967ddf82843526fdfa5e9a376b348",
-      "tree": "f73dff04bae5e315c752a502780dc95597d889dc",
+      "tip": "79f89c8021b4472ee7170d868816967bc7ef3762",
+      "tree": "780de49e814d2e3b2ea2fa59041155b2e3bb0c33",
       "prs": [
         {
           "number": 484,
           "title": "Add Minecraft 26.1 support",
           "head": "8ada6f3360b84bf8838bdef231600399cd24f4b1",
           "mergeBase": "bead85c57a2365e7c88bfe36ee1944da51f8449f",
-          "status": "conflict",
-          "note": "no resolver for viewer/lib/atlas.js, viewer/lib/worldrenderer.js"
+          "status": "resolved-ai"
         },
         {
           "number": 488,
           "title": "Render negative-Y sections on 1.18+ worlds",
           "head": "8049729deabbfe39d5beb14af5a543c927bb66a3",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "applied"
+          "status": "resolved-ai"
         },
         {
           "number": 490,
@@ -465,16 +456,14 @@
           "title": "Add viewer.waitForReady() for a fully textured first frame",
           "head": "af9075bb69c4a8d895ea8710898c56cf25db2f42",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "conflict",
-          "note": "no resolver for viewer/lib/entities.js, viewer/lib/entity/Entity.js, viewer/lib/utils.electron.js, viewer/lib/utils.js, viewer/lib/utils.web.js, viewer/lib/worker.js"
+          "status": "resolved-ai"
         },
         {
           "number": 506,
           "title": "Render dropped items",
           "head": "4c2502419e916aec7cba4e5f2005d745ef30eae0",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "conflict",
-          "note": "no resolver for viewer/lib/worldView.js"
+          "status": "resolved-ai"
         },
         {
           "number": 509,
@@ -488,16 +477,14 @@
           "title": "Decode host images without holding the event loop",
           "head": "3bbee612580004597f382bfac18b520e4021dcda",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "conflict",
-          "note": "no resolver for viewer/lib/entities.js, viewer/lib/entity/Entity.js, viewer/lib/utils.electron.js, viewer/lib/utils.js, viewer/lib/utils.web.js, viewer/lib/worker.js"
+          "status": "resolved-ai"
         },
         {
           "number": 511,
           "title": "Parse the block states in the mesher, not on the calling thread",
           "head": "05bd6ecb5578ecc72ac45abc52c819f8e59f2422",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "conflict",
-          "note": "no resolver for viewer/lib/entities.js, viewer/lib/entity/Entity.js, viewer/lib/utils.electron.js, viewer/lib/utils.js, viewer/lib/utils.web.js, viewer/lib/worker.js"
+          "status": "resolved-ai"
         }
       ]
     }
