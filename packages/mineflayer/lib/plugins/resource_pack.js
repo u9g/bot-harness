@@ -22,9 +22,7 @@ function inject (bot) {
     activeResourcePacks[data.uuid] = data.url
 
     bot.emit('resourcePack', data.url, data.uuid)
-    // The server holds the configuration phase (e.g. a Velocity server transfer)
-    // open until the pack is answered, so accept it there to let it complete
-    if (bot._client.state === 'configuration') acceptResourcePack()
+    autoAcceptResourcePack()
   })
 
   bot._client.on('remove_resource_pack', (data) => { // Doesn't emit  anything because it is removing rather than adding
@@ -49,10 +47,18 @@ function inject (bot) {
       bot.emit('resourcePack', data.url, data.hash)
       latestHash = data.hash
     }
-    // Accept during the configuration phase (e.g. a Velocity server transfer),
-    // which the server holds open until the pack is answered
-    if (bot._client.state === 'configuration') acceptResourcePack()
+    autoAcceptResourcePack()
   })
+
+  // A pack must be answered: the server holds the configuration phase (e.g. a Velocity
+  // transfer) open until it is, and proxies that move players through a play-phase pack
+  // drop an unanswered connection. Play-phase packs are left to a resourcePack listener
+  // when one exists so it can still deny.
+  function autoAcceptResourcePack () {
+    if (bot._client.state === 'configuration' || bot.listenerCount('resourcePack') === 0) {
+      acceptResourcePack()
+    }
+  }
 
   function sendResourcePackResult (result) {
     const packet = { result }

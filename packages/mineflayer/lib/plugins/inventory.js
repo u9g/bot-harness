@@ -25,6 +25,7 @@ const ALWAYS_CONSUMABLES = [
 function inject (bot, { hideErrors }) {
   const Item = require('prismarine-item')(bot.registry)
   const windows = require('prismarine-windows')(bot.version)
+  const ChatMessage = require('prismarine-chat')(bot.registry)
 
   let eatingTask = createDoneTask()
 
@@ -487,10 +488,15 @@ function inject (bot, { hideErrors }) {
     copyInventory(window)
     if (window !== bot.inventory) stateIds.delete(window.id)
     lastClosedWindow = window
-    bot.currentWindow = null
-    bot.emit('windowClose', window)
+    dropWindow(window)
     if (bot.supportFeature('stateIdUsed')) return Promise.resolve()
     return clickWindow(-999, 0, 0).catch(() => {})
+  }
+
+  // Client-side only: no close_window is sent
+  function dropWindow (window) {
+    bot.currentWindow = null
+    bot.emit('windowClose', window)
   }
 
   function copyInventory (window) {
@@ -808,8 +814,10 @@ function inject (bot, { hideErrors }) {
   bot._client.on('open_window', (packet) => {
     // open window
     lastClosedWindow = null
+    // The title is a chat component whose wire shape depends on the version
+    // (JSON string, or an NBT string/compound); window.title is always a ChatMessage.
     bot.currentWindow = windows.createWindow(packet.windowId,
-      packet.inventoryType, packet.windowTitle, packet.slotCount)
+      packet.inventoryType, ChatMessage.fromNotch(packet.windowTitle), packet.slotCount)
     prepareWindow(bot.currentWindow)
   })
   bot._client.on('open_horse_window', (packet) => {
@@ -825,24 +833,25 @@ function inject (bot, { hideErrors }) {
     bot.currentWindow = null
     bot.emit('windowClose', oldWindow)
   })
-  // Window ids restart with the player entity, so a later window can reuse
-  // the closed one's id and its early sync must not be taken for a trailing one.
-  bot._client.on('respawn', () => { lastClosedWindow = null })
+  // The server receiving a re-login has no window open; vanilla sends no
+  // close_window for the one that was open
   bot._client.on('login', () => {
-    lastClosedWindow = null
-    // close window when switch subserver
     windowItems = null
     lastClosedWindow = null
     stateIds.clear()
-    const oldWindow = bot.currentWindow
-    if (!oldWindow) return
-    bot.currentWindow = null
-    bot.emit('windowClose', oldWindow)
+    if (bot.currentWindow) dropWindow(bot.currentWindow)
   })
-  // A respawn (death or dimension change) replaces the server-side player
-  // entity and resets its window id counter, so pending window state can
-  // never describe a post-respawn window
+  // Vanilla sends close_window for the open window before handling a
+  // respawn. A respawn restarts the window id counter: pending window state
+  // never describes a post-respawn window, and a later window may reuse a
+  // closed one's id
   bot._client.on('respawn', () => {
+    const window = bot.currentWindow
+    if (window) {
+      bot._client.write('close_window', { windowId: window.id })
+      copyInventory(window)
+      dropWindow(window)
+    }
     windowItems = null
     lastClosedWindow = null
     stateIds.clear()

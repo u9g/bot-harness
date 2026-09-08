@@ -119,10 +119,12 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   function cleanup () {
     clearInterval(doPhysicsTimer)
     doPhysicsTimer = null
+    cancelRespawnReply()
   }
 
   function sendPacketPosition (position, onGround) {
     // sends data, no logic
+    if (bot._client.state !== 'play') return
     if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return
     const oldPos = new Vec3(lastSent.x, lastSent.y, lastSent.z)
     lastSent.x = position.x
@@ -136,6 +138,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
   function sendPacketLook (yaw, pitch, onGround) {
     // sends data, no logic
+    if (bot._client.state !== 'play') return
     const oldPos = new Vec3(lastSent.x, lastSent.y, lastSent.z)
     lastSent.yaw = yaw
     lastSent.pitch = pitch
@@ -147,6 +150,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
   function sendPacketPositionAndLook (position, yaw, pitch, onGround) {
     // sends data, no logic
+    if (bot._client.state !== 'play') return
     if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return
     const oldPos = new Vec3(lastSent.x, lastSent.y, lastSent.z)
     lastSent.x = position.x
@@ -449,6 +453,8 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   bot._client.on('position', (packet) => { pendingTeleports.push(packet) })
 
   function handleTeleport (packet) {
+    // A newer teleport supersedes the one a deferred reply would answer.
+    cancelRespawnReply()
     // Is this necessary? Feels like it might wrongly overwrite hitbox size sometimes
     // e.g. when crouching/crawling/swimming. Can someone confirm?
     bot.entity.height = 1.8
@@ -522,7 +528,8 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
       const delayedYaw = newYaw
       const delayedPitch = newPitch
       const delayedOnGround = bot.entity.onGround
-      setTimeout(() => {
+      respawnReply = setTimeout(() => {
+        respawnReply = null
         sendPacketPositionAndLook(delayedPos, delayedYaw, delayedPitch, delayedOnGround)
         shouldUsePhysics = true
         bot.jumpTicks = 0
@@ -594,6 +601,15 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   }
 
   let respawnTimer = 0
+  // The deferred respawn reply answers a teleport of the current play session. Once the client
+  // leaves play (start_configuration) or a new session begins (login), the position it carries
+  // means nothing to the server and the play-state packet cannot be written anyway. A newer
+  // teleport cancels it too: the server only accepts a reply to its latest teleport.
+  let respawnReply = null
+  function cancelRespawnReply () {
+    clearTimeout(respawnReply)
+    respawnReply = null
+  }
   bot.on('mount', () => { shouldUsePhysics = false })
   bot.on('death', () => {
     shouldUsePhysics = false
@@ -605,6 +621,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     // A teleport still queued here belongs to the world the bot just left, and its id means nothing
     // to the server it is about to talk to.
     pendingTeleports.length = 0
+    cancelRespawnReply()
     if (doPhysicsTimer === null) {
       lastPhysicsFrameTime = performance.now()
       doPhysicsTimer = setInterval(doPhysics, PHYSICS_INTERVAL_MS)
@@ -615,7 +632,10 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   // are not allowed. Physics is re-enabled by the position packet handler once
   // the server finishes configuration and play resumes.
   if (hasConfigurationState) {
-    bot._client.on('start_configuration', () => { shouldUsePhysics = false })
+    bot._client.on('start_configuration', () => {
+      shouldUsePhysics = false
+      cancelRespawnReply()
+    })
   }
   bot.on('end', cleanup)
 }

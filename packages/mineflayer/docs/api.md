@@ -1173,6 +1173,8 @@ Reset on each login; the object is kept and its slots are dropped.
  * `list` - scoreboard placed in list
  * `0-18` - slots defined in [protocol](https://minecraft.wiki/w/Protocol#Display_Scoreboard)
 
+Only slots that currently display an objective are enumerable, so `Object.values(bot.scoreboard)` never contains `undefined`. The named slots are non-enumerable aliases of `0`, `1` and `2`.
+
 #### bot.teams
 
 All teams known to the bot
@@ -1274,6 +1276,8 @@ Emitted when the server changes any of the game properties.
 #### "resourcePack" (url, hash)
 
 Emitted when the server sends a resource pack.
+
+The pack is accepted automatically when nobody listens to this event, or when it arrives during the configuration phase (a proxy server transfer), which the server holds open until the pack is answered. With a listener attached, a play-phase pack waits for `bot.acceptResourcePack()` or `bot.denyResourcePack()`.
 
 #### "title" (title, type)
 
@@ -1535,7 +1539,7 @@ Fires when you begin using a workbench, chest, brewing stand, etc.
 
 #### "windowClose" (window)
 
-Fires when you may no longer work with a workbench, chest, etc.
+Fires when you may no longer work with a workbench, chest, etc. Also fires when a respawn or a re-login (proxy server switch) discards the open window.
 
 #### "sleep"
 
@@ -1733,6 +1737,8 @@ Requests chat completion from the server.
 #### bot.chat(message)
 
 Sends a publicly broadcast chat message. Breaks up big messages into multiple chat messages as necessary.
+
+Throws if called before the `login` event, or after a disconnect that happened before it: the server only accepts chat once the client is in the play state.
 
 #### bot.whisper(username, message)
 

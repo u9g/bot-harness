@@ -105,11 +105,53 @@ for (const supportedVersion of versionsUnderTest) {
         }
         return loginPacket
       }
+
+      bot.test.generateRespawnPacket = () => {
+        const loginPacket = bot.test.generateLoginPacket()
+        let respawnPacket
+        if (bot.supportFeature('usesLoginPacket')) {
+          loginPacket.worldName = 'minecraft:overworld'
+          loginPacket.hashedSeed = [0, 0]
+          respawnPacket = {
+            // 1.19+ the `dimension` filed is a string in respawn packet and undefined in login packet, in previous versions it's same NBT data in login/respawn
+            dimension: bot.supportFeature('dimensionDataInCodec') ? 'minecraft:overworld' : loginPacket.dimension,
+            worldName: loginPacket.worldName,
+            hashedSeed: loginPacket.hashedSeed,
+            gamemode: 0,
+            previousGamemode: 255,
+            isDebug: false,
+            isFlat: false,
+            copyMetadata: true,
+            death: {
+              dimensionName: '',
+              location: {
+                x: 0,
+                y: 0,
+                z: 0
+              }
+            }
+          }
+          if (bot.supportFeature('spawnRespawnWorldDataField')) {
+            respawnPacket = {
+              worldState: respawnPacket
+            }
+            respawnPacket.worldState.name = loginPacket.worldName
+            respawnPacket.worldState.dimension = loginPacket.dimension
+          }
+        } else {
+          respawnPacket = {
+            dimension: 0,
+            hashedSeed: [0, 0],
+            gamemode: 0,
+            levelType: 'default'
+          }
+        }
+        return respawnPacket
+      }
     })
     afterEach((done) => {
-      bot.on('end', () => {
-        done()
-      })
+      if (bot._client.ended) done()
+      else bot.on('end', () => done())
       server.close()
     })
     it('chat', (done) => {
@@ -195,6 +237,23 @@ for (const supportedVersion of versionsUnderTest) {
         client.on('chat_message', onChat)
         client.on('chat', onChat)
       })
+    })
+    it('chat before login throws a descriptive error', async () => {
+      await once(bot, 'inject_allowed')
+      const early = /before the client entered the play state; wait for/
+      assert.throws(() => bot.chat('hi'), early)
+      assert.throws(() => bot.whisper('gary', 'hi'), early)
+    })
+    it('chat after a kick during login throws a descriptive error', async () => {
+      // Replaces the server's login handler so the client is rejected while still in the login state.
+      server.on('connection', (client) => {
+        client.removeAllListeners('login_start')
+        client.once('login_start', () => client.end('kicked'))
+      })
+      const [reason] = await once(bot, 'end')
+      const kicked = new RegExp(`disconnected before entering the play state \\(${reason}\\)`)
+      assert.throws(() => bot.chat('hi'), kicked)
+      assert.throws(() => bot.whisper('gary', 'hi'), kicked)
     })
     it('entity effects', (done) => {
       bot.once('entityEffect', (entity, effect) => {
@@ -702,6 +761,50 @@ for (const supportedVersion of versionsUnderTest) {
           done()
         })
       })
+      it('answers only the latest teleport when a second one lands inside the respawn reply delay', (done) => {
+        // After a death the reply to the next teleport waits 1.5 s. A teleport that arrives inside
+        // that window replaces it: the deferred reply must not go out with the older coordinates.
+        const teleport = (teleportId, x, y, z) => ({
+          x,
+          y,
+          z,
+          dx: 0,
+          dy: 0,
+          dz: 0,
+          pitch: 0,
+          yaw: 0,
+          flags: bot.registry.version['>=']('1.21.3') ? {} : 0,
+          teleportId
+        })
+        server.on('playerJoin', async (client) => {
+          try {
+            await client.write('login', bot.test.generateLoginPacket())
+            const chunk = bot.test.buildChunk()
+            chunk.setBlockType(pos, goldId)
+            await client.write('map_chunk', generateChunkPacket(chunk))
+            await once(bot, 'chunkColumnLoad')
+            const replies = []
+            client.on('packet', (data, meta) => {
+              if (meta.name === 'position_look') replies.push([data.x, data.y, data.z])
+            })
+            await client.write('position', teleport(0, 1.5, 80, 1.5))
+            while (replies.length === 0) await once(client, 'packet')
+            replies.length = 0
+
+            bot.emit('death')
+            await client.write('position', teleport(1, 3.5, 80, 3.5))
+            await sleep(100)
+            await client.write('position', teleport(2, 1.5, 66, 1.5))
+            // Outlive the 1.5 s reply delay.
+            await sleep(1700)
+
+            assert.deepStrictEqual(replies, [[1.5, 66, 1.5]], `teleport replies: ${JSON.stringify(replies)}`)
+            done()
+          } catch (err) {
+            done(err)
+          }
+        })
+      })
       it('gravity + land on solid block + jump', (done) => {
         let y = 80
         let landed = false
@@ -865,6 +968,63 @@ for (const supportedVersion of versionsUnderTest) {
         })
       })
 
+      it('cancels the delayed respawn teleport reply when a transfer lands inside its delay', function (done) {
+        // After a death the reply to the respawn teleport is deferred 1.5 s. A proxy transfer that
+        // starts inside that window must not make the timer write a play packet in the
+        // configuration state.
+        if (!bot.supportFeature('hasConfigurationState')) {
+          this.skip()
+          return
+        }
+        const positionPacket = {
+          x: 1.5,
+          y: 80,
+          z: 1.5,
+          dx: 0,
+          dy: 0,
+          dz: 0,
+          pitch: 0,
+          yaw: 0,
+          flags: bot.registry.version['>=']('1.21.3') ? {} : 0,
+          teleportId: 0
+        }
+        const movementPackets = ['position', 'position_look', 'look', 'flying']
+        const sent = []
+        server.on('playerJoin', async (client) => {
+          try {
+            const originalWrite = bot._client.write.bind(bot._client)
+            bot._client.write = (name, params) => {
+              if (movementPackets.includes(name)) sent.push(`${name} in ${bot._client.state}`)
+              return originalWrite(name, params)
+            }
+
+            await client.write('login', bot.test.generateLoginPacket())
+            const chunk = bot.test.buildChunk()
+            chunk.setBlockType(pos, goldId)
+            await client.write('map_chunk', generateChunkPacket(chunk))
+            await once(bot, 'chunkColumnLoad')
+            const p1 = once(bot, 'forcedMove')
+            await client.write('position', positionPacket)
+            await p1
+
+            bot.emit('death')
+            sent.length = 0
+            await client.write('position', { ...positionPacket, teleportId: 1 })
+            await sleep(100)
+            await client.write('start_configuration', {})
+            if (bot._client.state !== 'configuration') {
+              await once(bot._client, 'state')
+            }
+            // Outlive the 1.5 s reply delay.
+            await sleep(1700)
+
+            assert.deepStrictEqual(sent, [], `movement packets written after the transfer began: ${sent.join(', ')}`)
+            done()
+          } catch (err) {
+            done(err)
+          }
+        })
+      })
       it('accepts a configuration-phase resource pack with the real UUID bytes', function () {
         // The accept must carry the pack's real UUID bytes; a uuid-1345 object serializes to
         // 16 zero bytes.
@@ -898,6 +1058,38 @@ for (const supportedVersion of versionsUnderTest) {
         const buf = serializer.createPacketBuffer({ name: accept.name, params: accept.params })
         assert(buf.includes(expectedBytes),
           'resource_pack_receive must carry the pack UUID bytes, not a zero UUID')
+      })
+
+      // Some proxies move players through a play-phase pack request and drop the
+      // connection when it goes unanswered.
+      function playPhasePack (withListener) {
+        // The mock server never sends a pack, so the plugin is driven directly.
+        const client = new EventEmitter()
+        client.state = 'play'
+        const writes = []
+        client.write = (name, params) => { writes.push({ name, params }) }
+        const fakeBot = new EventEmitter()
+        fakeBot._client = client
+        fakeBot.supportFeature = registry.supportFeature.bind(registry)
+        require('../lib/plugins/resource_pack')(fakeBot)
+        if (withListener) fakeBot.on('resourcePack', () => {})
+
+        const pack = { url: 'https://example.invalid/pack.zip', hash: '88b406352dc8a335b1050a4bf9577a878c812012', forced: false }
+        if (registry.supportFeature('resourcePackUsesUUID')) {
+          client.emit('add_resource_pack', { uuid: '8ef4746b-93b7-3c32-9dcb-b375016c114d', ...pack })
+        } else {
+          client.emit('resource_pack_send', pack)
+        }
+        return writes.filter((w) => w.name === 'resource_pack_receive').map((w) => w.params.result)
+      }
+
+      it('accepts a play-phase resource pack when nobody listens for it', () => {
+        // ACCEPTED then SUCCESSFULLY_LOADED
+        assert.deepStrictEqual(playPhasePack(false), [3, 0])
+      })
+
+      it('leaves a play-phase resource pack to the resourcePack listener', () => {
+        assert.deepStrictEqual(playPhasePack(true), [])
       })
     })
 
@@ -1054,45 +1246,7 @@ for (const supportedVersion of versionsUnderTest) {
       const goldId = 41
       it('switchWorld respawn', (done) => {
         const loginPacket = bot.test.generateLoginPacket()
-        let respawnPacket
-        if (bot.supportFeature('usesLoginPacket')) {
-          loginPacket.worldName = 'minecraft:overworld'
-          loginPacket.hashedSeed = [0, 0]
-          loginPacket.entityId = 0
-          respawnPacket = {
-            // 1.19+ the `dimension` filed is a string in respawn packet and undefined in login packet, in previous versions it's same NBT data in login/respawn
-            dimension: bot.supportFeature('dimensionDataInCodec') ? 'minecraft:overworld' : loginPacket.dimension,
-            worldName: loginPacket.worldName,
-            hashedSeed: loginPacket.hashedSeed,
-            gamemode: 0,
-            previousGamemode: 255,
-            isDebug: false,
-            isFlat: false,
-            copyMetadata: true,
-            death: {
-              dimensionName: '',
-              location: {
-                x: 0,
-                y: 0,
-                z: 0
-              }
-            }
-          }
-          if (bot.supportFeature('spawnRespawnWorldDataField')) {
-            respawnPacket = {
-              worldState: respawnPacket
-            }
-            respawnPacket.worldState.name = loginPacket.worldName
-            respawnPacket.worldState.dimension = loginPacket.dimension
-          }
-        } else {
-          respawnPacket = {
-            dimension: 0,
-            hashedSeed: [0, 0],
-            gamemode: 0,
-            levelType: 'default'
-          }
-        }
+        const respawnPacket = bot.test.generateRespawnPacket()
         const chunk = bot.test.buildChunk()
         chunk.setBlockType(pos, goldId)
         const chunkPacket = generateChunkPacket(chunk)
@@ -1250,6 +1404,28 @@ for (const supportedVersion of versionsUnderTest) {
             done(err)
           }
         })
+      })
+
+      it('window titles are ChatMessages whatever shape the server sends', async () => {
+        const Item = require('prismarine-item')(registry)
+        // A component title plus the bare-string form third-party servers send.
+        const titles = registry.supportFeature('chatPacketsUseNbtComponents')
+          ? [nbt.comp({ text: nbt.string('Test Chest') }), nbt.string('Test Chest')]
+          : [JSON.stringify({ text: 'Test Chest' }), 'Test Chest']
+        const chest = registry.supportFeature('village&pillageInventoryWindows')
+          ? { inventoryType: 2 }
+          : { inventoryType: 'minecraft:chest', slotCount: 27 }
+        const [client] = await once(server, 'playerJoin')
+        client.write('login', bot.test.generateLoginPacket())
+        for (const [i, windowTitle] of titles.entries()) {
+          const windowId = i + 1
+          client.write('open_window', { windowId, windowTitle, ...chest })
+          client.write('window_items', { windowId, stateId: 0, items: [], carriedItem: Item.toNotch(null) })
+          const [window] = await once(bot, 'windowOpen')
+          assert.strictEqual(window.id, windowId)
+          assert.strictEqual(window.title.constructor.name, 'ChatMessage')
+          assert.strictEqual(window.title.toString(), 'Test Chest')
+        }
       })
 
       it('closeWindow follows close_window with a no-op inventory click on pre-1.17 only', (done) => {
@@ -2484,6 +2660,50 @@ for (const supportedVersion of versionsUnderTest) {
           client.write('window_items', { ...windowItemsPacket(1, emptyItems(chestData.slots)), stateId: 5 })
         })
       })
+
+      it('drops the open window on a re-login without telling the server', (done) => {
+        // Vanilla sends no close_window for the window open before a re-login
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.on('close_window', () => {
+            done(new Error('close_window was sent to the new server'))
+          })
+
+          bot.once('windowOpen', (window) => {
+            bot.once('windowClose', (closed) => {
+              assert.strictEqual(closed, window)
+              assert.strictEqual(bot.currentWindow, null)
+              setTimeout(done, 100)
+            })
+            client.write('login', bot.test.generateLoginPacket())
+          })
+
+          client.write('open_window', openWindowPacket(1, chestData))
+          client.write('window_items', windowItemsPacket(1, emptyItems(chestData.slots)))
+        })
+      })
+
+      it('closes the open window on respawn like vanilla', (done) => {
+        // Vanilla sends close_window for the open window before handling a respawn
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+
+          bot.once('windowOpen', (window) => {
+            let closed = null
+            bot.once('windowClose', (w) => { closed = w })
+            client.once('close_window', (packet) => {
+              assert.strictEqual(packet.windowId, window.id)
+              assert.strictEqual(closed, window)
+              assert.strictEqual(bot.currentWindow, null)
+              done()
+            })
+            client.write('respawn', bot.test.generateRespawnPacket())
+          })
+
+          client.write('open_window', openWindowPacket(1, chestData))
+          client.write('window_items', windowItemsPacket(1, emptyItems(chestData.slots)))
+        })
+      })
     })
 
     describe('teams', () => {
@@ -2530,6 +2750,22 @@ for (const supportedVersion of versionsUnderTest) {
       })
     })
 
+    describe('scoreboard', () => {
+      it('enumerates only the display slots that hold an objective', async () => {
+        server.on('playerJoin', (client) => client.write('login', bot.test.generateLoginPacket()))
+        await once(bot, 'login')
+        bot._client.emit('scoreboard_objective', { name: 'test1', action: 0, displayText: JSON.stringify({ text: 'Test 1' }) })
+        bot._client.emit('scoreboard_display_objective', { name: 'test1', position: 1 })
+        assert.strictEqual(bot.scoreboard.sidebar, bot.scoreboards.test1)
+        assert.strictEqual(bot.scoreboard.list, undefined)
+        assert.deepStrictEqual(Object.keys(bot.scoreboard), ['1'])
+        assert.ok(Object.values(bot.scoreboard).every(sb => sb !== undefined))
+        assert.doesNotThrow(() => { for (const sb of Object.values(bot.scoreboard)) assert.strictEqual(sb.title, 'Test 1') })
+        bot._client.emit('scoreboard_objective', { name: 'test1', action: 1 })
+        assert.deepStrictEqual(Object.keys(bot.scoreboard), [])
+        assert.strictEqual(bot.scoreboard.sidebar, undefined)
+      })
+    })
     describe('tablist', () => {
       it('handles newlines in header and footer', (done) => {
         const HEADER = 'asd\ndsa'
