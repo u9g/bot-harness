@@ -160,9 +160,17 @@ const SCOPE_NAMES = Object.keys(SCOPE)
 type ExecFn = (...args: unknown[]) => Promise<unknown>
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (...args: string[]) => ExecFn
 
+// The scope names are the function's parameters, which a body may not redeclare at its top level;
+// inside a block the same declaration is a legal shadow.
 function compile (code: string): ExecFn {
   try { return new AsyncFunction(...SCOPE_NAMES, `return (${code}\n)`) } catch {}
-  return new AsyncFunction(...SCOPE_NAMES, code)
+  try {
+    return new AsyncFunction(...SCOPE_NAMES, `{\n${code}\n}`)
+  } catch (e) {
+    // The stack below a compile error is the daemon's, not the code's.
+    if (e instanceof SyntaxError) e.stack = `${e.name}: ${e.message}`
+    throw e
+  }
 }
 
 async function run ({ code, timeout = 30_000 }: ExecRequest): Promise<unknown> {
