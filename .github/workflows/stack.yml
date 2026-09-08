@@ -37,13 +37,14 @@ jobs:
           path: .stack-mirror
           key: stack-mirror-${{ steps.day.outputs.day }}
           restore-keys: stack-mirror-
+      - name: Install the pi coding agent
+        run: npm install -g @mariozechner/pi-coding-agent@0.73.1
       - name: Rebuild the PR stacks
         id: build
         env:
           GH_TOKEN: ${{ github.token }}
           ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
           ZAI_MODEL: ${{ vars.ZAI_MODEL }}
-          ZAI_BASE_URL: ${{ vars.ZAI_BASE_URL }}
         run: |
           git config user.name 'bot-harness stack'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
