@@ -102,7 +102,8 @@ function status (): BotStatus {
     health: bot.health,
     lastKick: health.lastKick,
     lastEnd: health.lastEnd,
-    lastError: health.lastError
+    lastError: health.lastError,
+    recording: recording === null ? undefined : { file: recording.file, ...recording.stats() }
   }
 }
 
@@ -137,8 +138,9 @@ const record = {
     if (!recording) throw new Error('not recording')
     const r = recording
     recording = null
+    const { dropped } = r.stats()
     const file = await r.stop()
-    log('recorded', file)
+    log('recorded', file, ...(dropped === 0 ? [] : [`(${dropped} frames dropped)`]))
     return file
   }
 }

@@ -17,8 +17,16 @@ export interface RecordOpts {
   duty?: number
 }
 
+export interface RecordingStats {
+  /** Frame slots not in the file: ffmpeg had not taken the previous frame when they came due. */
+  dropped: number
+  /** Bytes handed to ffmpeg's stdin and not yet taken. */
+  queued: number
+}
+
 export interface Recording {
   file: string
+  stats: () => RecordingStats
   snapshot: (file: string) => Promise<string>
   stop: () => Promise<string>
 }
@@ -127,22 +135,38 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   const raw = ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`]
   const video = ffmpeg([...raw, '-r', String(fps), '-i', 'pipe:0', '-vf', 'vflip', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', file])
 
+  const stdin = video.proc.stdin!
   const pixels = Buffer.alloc(width * height * 4)
   let last: Buffer | null = null
   const frameMs = 1000 / fps
   const t0 = performance.now()
   let written = 0
+  let dropped = 0
+  // Frames handed to stdin that ffmpeg has not taken. At most 1: a frame is 0.9 MB, and one that
+  // is queued behind a slow encoder stays queued.
+  let inflight = 0
   let timer: NodeJS.Timeout | null = null
   const tick = (): void => {
-    const start = performance.now()
-    viewer.update()
-    renderer.render(viewer.scene, viewer.camera)
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-    const cost = performance.now() - start
-    // Output runs at wall-clock rate: every frame slot elapsed since t0 gets the latest render.
-    last = Buffer.from(pixels)
     const due = Math.floor((performance.now() - t0) / frameMs) + 1
-    for (; written < due; written++) video.proc.stdin!.write(last)
+    let cost = 0
+    if (inflight === 0 && written < due) {
+      const start = performance.now()
+      viewer.update()
+      renderer.render(viewer.scene, viewer.camera)
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+      cost = performance.now() - start
+      // Output runs at wall-clock rate: every frame slot elapsed since t0 gets the latest render.
+      // Repeats of one buffer share its memory.
+      last = Buffer.from(pixels)
+      inflight++
+      for (; written < due - 1; written++) stdin.write(last)
+      stdin.write(last, () => { inflight-- })
+      written++
+    }
+    // A slot ffmpeg could not take is dropped, never queued; the file runs short of wall-clock by
+    // that many frames.
+    dropped += due - written
+    written = due
     // A render blocks the daemon's only thread, so the bot's physics and packet handling stop for
     // `cost`. The next render waits at least gap(cost), capping that share at `duty` and keeping
     // the bot's movement close enough to real time that servers do not see it teleport-desync.
@@ -153,6 +177,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
 
   return {
     file,
+    stats: () => ({ dropped, queued: stdin.writableLength }),
     async snapshot (out) {
       if (!last) throw new Error('no frame yet')
       const png = ffmpeg([...raw, '-i', 'pipe:0', '-vf', 'vflip', '-frames:v', '1', out])
@@ -166,7 +191,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
       bot.off('move', follow)
       worldView.removeListenersFromBot(bot)
       // Closing ffmpeg's stdin writes the moov atom; it must run even if GL teardown throws.
-      video.proc.stdin!.end()
+      stdin.end()
       try {
         await video.done
       } finally {
