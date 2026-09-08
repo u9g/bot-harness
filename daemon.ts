@@ -62,20 +62,34 @@ const now = (): string => new Date().toISOString()
 function createBot (): Bot {
   const b = mineflayer.createBot(botOpts)
   b.loadPlugin(pathfinder)
-  b.on('login', () => { health.connected = true; health.loginAt = now(); log('login', b.username) })
+  // A bot that reconnect() has replaced still emits 'end' (and whatever else the socket has left)
+  // after `bot` names its successor; `health` and `disconnected` describe the current bot only.
+  const current = (): boolean => b === bot
+  b.on('login', () => {
+    log('login', b.username)
+    if (!current()) return
+    health.connected = true
+    health.loginAt = now()
+  })
   b.on('spawn', () => log('spawn', b.entity.position))
   b.on('kicked', r => {
     const reason = typeof r === 'string' ? r : JSON.stringify(r)
+    log('kicked', reason)
+    if (!current()) return
     health.lastKick = { at: now(), reason }
     disconnected = `kicked: ${reason}`
-    log('kicked', reason)
   })
-  b.on('error', e => { health.lastError = { at: now(), message: e.message ?? String(e) }; log('error', e.stack ?? e) })
+  b.on('error', e => {
+    log('error', e.stack ?? e)
+    if (!current()) return
+    health.lastError = { at: now(), message: e.message ?? String(e) }
+  })
   b.on('end', r => {
+    log('end', r)
+    if (!current()) return
     health.connected = false
     health.lastEnd = { at: now(), reason: String(r) }
     disconnected ??= `ended: ${r}`
-    log('end', r)
     // The recorder draws the bot's view; with the connection gone there is nothing left to draw, and
     // a renderer left running holds its share of the event loop and grows the file until someone
     // remembers to stop it.
