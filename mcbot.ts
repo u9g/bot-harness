@@ -191,6 +191,7 @@ async function status (): Promise<void> {
   if (s.lastKick) console.log(`  last kick  ${s.lastKick.at}  ${s.lastKick.reason}`)
   if (s.lastEnd) console.log(`  last end   ${s.lastEnd.at}  ${s.lastEnd.reason}`)
   if (s.lastError) console.log(`  last error ${s.lastError.at}  ${s.lastError.message}`)
+  if (s.recording) console.log(`  recording  ${s.recording.file}  dropped ${s.recording.dropped} frames, ${(s.recording.queued / 2 ** 20).toFixed(1)} MB queued`)
   process.exit(s.connected ? 0 : 1)
 }
 
