@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
-      "tip": "a3dbebbe7b952a85d8f577098de812e0fec35bb5",
-      "tree": "d47bcdd88a4facdde70c1996ff706e968f207215",
+      "baseSha": "8c6525b6cc0df0e218d01824d724017222e9b05e",
+      "tip": "445acf15a8ab4bf17dd0705812d0fcef3a048132",
+      "tree": "cc17348e8a13e1143867a4220ae81e84dbb889eb",
       "prs": [
         {
           "number": 1266,
@@ -79,8 +79,8 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "d9ea12e98ec1a6ac1f2fcfb0defd5c455d6b1767",
-      "tree": "0a2490ab36cb11e5f8ae91c105b9d4efdd6ed646",
+      "tip": "fc7005da6fd92e7cdd30e175bed65691ce427e4b",
+      "tree": "69d46820c360270c8cdd3bb238f114052724e9cf",
       "prs": [
         {
           "number": 162,
@@ -93,6 +93,21 @@
           "number": 177,
           "title": "Add the hash datatype",
           "head": "5dffdf8f79fe1544d0a2a896fbffea163d8213bc",
+          "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
+          "status": "applied"
+        },
+        {
+          "number": 178,
+          "title": "FullPacketParser: emit partialReadError with the chunk it could not read",
+          "head": "0087395b45bec014d0f85e695905891809f5604b",
+          "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
+          "status": "resolved-ai",
+          "note": "Resolved test/misc.js as a union: kept the stack's `describe('hash', ...)` suite from #177 intact and appended the PR's `describe('FullPacketParser', ...)` suite after it (its `FullPacketParser` impor\n... (102 more bytes cut) (test/misc.js; 6 turns)"
+        },
+        {
+          "number": 179,
+          "title": "Throttle repeated packet-parse error logs in FullPacketParser",
+          "head": "3ce26e3df2038f2500f502823cbac4cbd2c28703",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
           "status": "applied"
         }
@@ -434,22 +449,22 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "79f89c8021b4472ee7170d868816967bc7ef3762",
-      "tree": "780de49e814d2e3b2ea2fa59041155b2e3bb0c33",
+      "tip": "3449eaa32282230d3882f03ba4044dd55165314c",
+      "tree": "3fa7afa9d138b9bc476f05c509c6133b99a760ef",
       "prs": [
         {
           "number": 484,
           "title": "Add Minecraft 26.1 support",
           "head": "8ada6f3360b84bf8838bdef231600399cd24f4b1",
           "mergeBase": "bead85c57a2365e7c88bfe36ee1944da51f8449f",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 488,
           "title": "Render negative-Y sections on 1.18+ worlds",
           "head": "8049729deabbfe39d5beb14af5a543c927bb66a3",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 490,
@@ -463,14 +478,14 @@
           "title": "Add viewer.waitForReady() for a fully textured first frame",
           "head": "af9075bb69c4a8d895ea8710898c56cf25db2f42",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 506,
           "title": "Render dropped items",
           "head": "4c2502419e916aec7cba4e5f2005d745ef30eae0",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 509,
@@ -484,14 +499,21 @@
           "title": "Decode host images without holding the event loop",
           "head": "3bbee612580004597f382bfac18b520e4021dcda",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 511,
           "title": "Parse the block states in the mesher, not on the calling thread",
           "head": "05bd6ecb5578ecc72ac45abc52c819f8e59f2422",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
+        },
+        {
+          "number": 513,
+          "title": "Unload chunks the server unloads, and follow the world across a transfer",
+          "head": "814b753c96bbb311c4fc020a9c74e445abb642df",
+          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
+          "status": "applied"
         }
       ]
     }
