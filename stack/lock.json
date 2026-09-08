@@ -4,8 +4,8 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
-      "tip": "864d94e53b71d8a7ccdae4ea9dbd5d770e44edc0",
-      "tree": "f76ba19d68c3cb38ea491bb78e01fade6d856489",
+      "tip": "fc4510584054bfbe1709d129474f8c8fe1030499",
+      "tree": "d47bcdd88a4facdde70c1996ff706e968f207215",
       "prs": [
         {
           "number": 1266,
@@ -39,6 +39,13 @@
           "number": 1282,
           "title": "Add the useEntityHasLocation feature",
           "head": "2427e5b1733c135bcc876bc4329467e36c641162",
+          "mergeBase": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
+          "status": "applied"
+        },
+        {
+          "number": 1283,
+          "title": "Regenerate pc 1.10, 1.11 and 1.12 recipes from the game",
+          "head": "2e266c199adf7b0e1275ae9a826468555ff53289",
           "mergeBase": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
           "status": "applied"
         }
