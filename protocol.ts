@@ -21,6 +21,8 @@ export interface ExecRequest {
   id: number
   code: string
   timeout?: number
+  /** Reply as soon as the code is running instead of waiting for it; it goes on as a task. */
+  detach?: boolean
 }
 
 /** Asks the daemon what the bot itself is doing, without running any user code. */
@@ -45,6 +47,16 @@ export interface BotStatus {
   lastError?: { at: string, message: string }
   /** Present while a recording runs. `dropped` frames are absent from the file. */
   recording?: { file: string, dropped: number, queued: number }
+}
+
+/** One exec that has not settled, as `tasks.list()` returns it (the JSON value of an exec). */
+export interface TaskInfo {
+  exec: number
+  startedAt: string
+  /** Set once the exec's `signal` fired: its bot ended, or someone cancelled it. */
+  aborted: { at: string, reason: string } | null
+  /** First line of the code. */
+  code: string
 }
 
 /** Set when the bot's connection is gone, so a caller sees it even though the exec itself ran. */
