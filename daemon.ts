@@ -165,14 +165,25 @@ function compile (code: string): ExecFn {
   return new AsyncFunction(...SCOPE_NAMES, code)
 }
 
+/** Numbers execs across the daemon's life; the CLI sends every request as id 1. */
+let execSeq = 0
+
 async function run ({ code, timeout = 30_000 }: ExecRequest): Promise<unknown> {
+  const n = ++execSeq
   const fn = compile(code)
   const args = SCOPE_NAMES.map(k => LAZY.has(k) ? (SCOPE[k as 'bot' | 'human'])() : SCOPE[k as keyof typeof SCOPE])
+  const result = fn(...args)
   let timer: NodeJS.Timeout
   const timedOut = new Promise<never>((_, rej) => {
-    timer = setTimeout(() => rej(new Error(`exec timed out after ${timeout}ms (still running in daemon)`)), timeout)
+    timer = setTimeout(() => {
+      // The caller is gone once this rejects, so whatever the code still settles to goes to the log.
+      result.then(
+        v => log(`late result for exec ${n}:`, serialize(v)),
+        (e: unknown) => log(`late error for exec ${n}:`, e instanceof Error ? e.stack ?? e.message : String(e)))
+      rej(new Error(`exec ${n} timed out after ${timeout}ms (still running in daemon; its result will be logged as "late result for exec ${n}")`))
+    }, timeout)
   })
-  try { return await Promise.race([fn(...args), timedOut]) } finally { clearTimeout(timer!) }
+  try { return await Promise.race([result, timedOut]) } finally { clearTimeout(timer!) }
 }
 
 const note = (): { disconnected?: string } => (disconnected === null ? {} : { disconnected })

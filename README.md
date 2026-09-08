@@ -39,7 +39,7 @@ Every command except `list` takes the bot's ID first: `start` requires one (1-29
 
 Once the bot's connection is gone it keeps answering `exec` with whatever state it still holds, so `state` and the packet history stay readable; every reply then carries the reason on stderr (`t1 is disconnected (kicked: ...)`). `reconnect()` clears it.
 
-`-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon.
+`-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon, and when it settles its value or error goes to the session log (`mcbot logs`) as `late result for exec N` / `late error for exec N`, where N is the exec number in the timeout message.
 
 Layout: `mcbot.ts` is the CLI, `daemon.ts` is the detached process (bot + unix socket eval server), `protocol.ts` is the newline-delimited JSON wire format between them.
 
