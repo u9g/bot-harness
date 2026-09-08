@@ -8,7 +8,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { makeResolver, hasMarkers, type Resolver } from './resolve.ts'
+import { makeResolver, type Resolver, type Unmerged } from './resolve.ts'
 
 type StackConfig = { repo: string, base: string, path?: string, nested?: Record<string, string>, include?: number[], exclude?: number[], packageJson?: Record<string, any> }
 type Config = { author: string, stacks: Record<string, StackConfig> }
@@ -104,15 +104,18 @@ function order (prs: Array<Pr & { head: string }>): Array<Pr & { head: string }>
   return out
 }
 
-function syntaxError (wt: string, file: string): string | null {
-  if (/\.(c|m)?js$/.test(file)) {
-    const r = run('node', ['--check', file], { cwd: wt, ok: [0, 1] })
-    return r.status === 0 ? null : r.stderr.split('\n').slice(0, 8).join('\n')
+const unmergedStates: Record<string, string> = {
+  DD: 'both deleted', AU: 'added by us', UD: 'deleted by them', UA: 'added by them',
+  DU: 'deleted by us', AA: 'both added', UU: 'both modified'
+}
+
+function unmergedPaths (wt: string): Unmerged[] {
+  const out: Unmerged[] = []
+  for (const entry of git(['status', '--porcelain=v1', '-z'], { cwd: wt }).split('\0')) {
+    const state = unmergedStates[entry.slice(0, 2)]
+    if (state && entry.length > 3) out.push({ file: entry.slice(3), state })
   }
-  if (file.endsWith('.json')) {
-    try { JSON.parse(readFileSync(join(wt, file), 'utf8')); return null } catch (e: any) { return e.message }
-  }
-  return null
+  return out
 }
 
 type Applied = { tip: string, status: PrStatus, note?: string }
@@ -124,41 +127,29 @@ async function applyWithWorktree (id: string, cfg: StackConfig, tip: string, squ
   const w = (args: string[], opts: Parameters<typeof run>[2] = {}) => git(args, { cwd: wt, ...opts })
   try {
     run('git', ['cherry-pick', '--no-commit', squash], { cwd: wt, ok: [0, 1] })
-    const unresolved = w(['diff', '--name-only', '--diff-filter=U']).split('\n').filter(Boolean)
+    const unmerged = unmergedPaths(wt)
     let how: PrStatus = 'resolved-rerere'
-    if (unresolved.length) {
-      if (!resolver) return { tip, status: 'conflict', note: `no resolver for ${unresolved.join(', ')}` }
+    let note: string | undefined
+    if (unmerged.length) {
+      if (!resolver) return { tip, status: 'conflict', note: `no resolver for ${unmerged.map(u => u.file).join(', ')}` }
       how = 'resolved-ai'
-      for (const file of unresolved) {
-        const abs = join(wt, file)
-        if (!existsSync(abs)) return { tip, status: 'conflict', note: `${file}: deleted on one side` }
-        const content = readFileSync(abs, 'utf8')
-        if (!hasMarkers(content)) return { tip, status: 'conflict', note: `${file}: conflict without text markers` }
-        const req = {
+      try {
+        const res = await resolver.resolve({
           repo: cfg.repo,
           pr,
           stackDescription: `upstream ${cfg.base} ${short(baseSha)} + PRs ${appliedSoFar.map(n => '#' + n).join(', ') || '(none yet)'}`,
-          file,
-          content,
-          prDiff: mg(['diff', mergeBase, pr.head, '--', file]),
-          stackDiff: mg(['diff', mergeBase, tip, '--', file])
-        }
-        let feedback: string | undefined
-        let done = false
-        for (let attempt = 0; attempt < 3 && !done; attempt++) {
-          let resolved: string
-          try { resolved = await resolver.resolve({ ...req, feedback }) } catch (e: any) { feedback = e.message; continue }
-          writeFileSync(abs, resolved)
-          const err = syntaxError(wt, file)
-          if (err) { feedback = `syntax check failed: ${err}`; continue }
-          done = true
-        }
-        if (!done) { return { tip, status: 'conflict', note: `${file}: ${feedback}` } }
-        w(['add', '--', file])
+          worktree: wt,
+          mergeBase,
+          tip,
+          unmerged
+        })
+        note = `${res.summary} (${res.touched.join(', ')}; ${res.turns} turns)`
+      } catch (e: any) {
+        return { tip, status: 'conflict', note: `${unmerged.map(u => u.file).join(', ')}: ${e.message}` }
       }
     }
     w(['commit', '-q', '--no-verify', '-m', message])
-    return { tip: w(['rev-parse', 'HEAD']), status: how }
+    return { tip: w(['rev-parse', 'HEAD']), status: how, note }
   } finally {
     mg(['worktree', 'remove', '--force', wt])
   }

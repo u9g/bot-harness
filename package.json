@@ -8,6 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "node --test stack/*.test.ts",
     "stack": "node stack/build.ts",
     "smoke": "node stack/smoke.ts"
   },
