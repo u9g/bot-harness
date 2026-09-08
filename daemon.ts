@@ -10,6 +10,7 @@ import { Vec3 } from 'vec3'
 import type { BotStatus, DaemonOpts, ExecRequest, ExecReply, Request, StatusRequest } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
 import { placeInOwnCgroup } from './cgroup.ts'
+import { fingerprintBadPackets } from './badpacket.ts'
 
 const ownRequire = createRequire(import.meta.url)
 // pnpm gives the harness a strict node_modules, so a bare createRequire here reaches only the
@@ -62,6 +63,7 @@ const now = (): string => new Date().toISOString()
 function createBot (): Bot {
   const b = mineflayer.createBot(botOpts)
   b.loadPlugin(pathfinder)
+  fingerprintBadPackets(b, { name: opts.name, host: opts.bot.host, port: opts.bot.port, username: opts.bot.username, version: opts.bot.version }, file => log('bad packet', file))
   b.on('login', () => { health.connected = true; health.loginAt = now(); log('login', b.username) })
   b.on('spawn', () => log('spawn', b.entity.position))
   b.on('kicked', r => {
