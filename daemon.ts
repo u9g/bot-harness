@@ -31,8 +31,7 @@ const botOpts = opts.bot as BotOptions
 
 const log = (...a: unknown[]): void => console.log(new Date().toISOString(), ...a)
 
-// Cap the bot before it starts allocating. A leak inside its own cgroup is a local OOM kill; the
-// same leak outside one took the whole machine down with it.
+// Must precede the bot: the scope only binds allocations made after the move.
 try {
   const scope = placeInOwnCgroup(opts.name)
   log(scope === null ? 'no user systemd, running uncapped' : `cgroup ${scope}`)
