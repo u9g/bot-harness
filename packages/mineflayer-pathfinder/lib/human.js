@@ -88,7 +88,8 @@ function createHuman (bot, opts = {}) {
     m.allowParkour = false
     m.allowSprinting = true
     m.scafoldingBlocks = []
-    m.maxDropDown = 3
+    // maxDropDown counts down to the block landed on, so 4 is a three-block fall: the deepest that costs no health.
+    m.maxDropDown = 4
     return m
   }
 
@@ -431,8 +432,24 @@ function createHuman (bot, opts = {}) {
   }
 
   let planSeq = 0
+  // The walkTo in flight, from the call until its promise settles: planning included, so a goal
+  // reissued while the search is still slicing joins it too.
+  let inflight = null
 
-  async function walkTo (goal, o = {}) {
+  // A walkTo for the goal already in flight (within half a block) returns that walk's promise; any
+  // other goal supersedes it. Re-targeting on a timer would otherwise fail every walk before it
+  // took a step.
+  function walkTo (goal, o = {}) {
+    if (inflight && inflight.goal.distanceTo(goal) <= 0.5) return inflight.promise
+    const promise = startWalk(goal, o)
+    const mine = { goal: goal.clone(), promise }
+    inflight = mine
+    const clear = () => { if (inflight === mine) inflight = null }
+    promise.then(clear, clear)
+    return promise
+  }
+
+  async function startWalk (goal, o) {
     if (walk) failWalk(walk, new Error('superseded'))
     const seq = ++planSeq
     const plan = await planRoute(goal, () => seq === planSeq)
