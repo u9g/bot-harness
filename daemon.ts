@@ -9,6 +9,7 @@ import pathfinderPkg from 'mineflayer-pathfinder'
 import { Vec3 } from 'vec3'
 import type { BotStatus, DaemonOpts, ExecRequest, ExecReply, Request, StatusRequest } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
+import { placeInOwnCgroup } from './cgroup.ts'
 
 const ownRequire = createRequire(import.meta.url)
 // pnpm gives the harness a strict node_modules, so a bare createRequire here reaches only the
@@ -29,6 +30,14 @@ const opts: DaemonOpts = JSON.parse(process.env.MCBOT_OPTS!)
 const botOpts = opts.bot as BotOptions
 
 const log = (...a: unknown[]): void => console.log(new Date().toISOString(), ...a)
+
+// Must precede the bot: the scope only binds allocations made after the move.
+try {
+  const scope = placeInOwnCgroup(opts.name)
+  log(scope === null ? 'no user systemd, running uncapped' : `cgroup ${scope}`)
+} catch (e) {
+  log('could not create cgroup, running uncapped:', e instanceof Error ? e.message : e)
+}
 
 /** Persists across exec calls; scripts can stash anything here. */
 const state: Record<string, unknown> = {}
