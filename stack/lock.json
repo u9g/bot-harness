@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "8c6525b6cc0df0e218d01824d724017222e9b05e",
-      "tip": "31928eb75967bd6e277e4ae155fd731363f29d42",
+      "tip": "806286930143c04ffd02912496611f380f21aff0",
       "tree": "cc17348e8a13e1143867a4220ae81e84dbb889eb",
       "prs": [
         {
@@ -79,13 +79,13 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "efd33866886d541a328ce23b3de2edbf82f02997",
-      "tree": "69d46820c360270c8cdd3bb238f114052724e9cf",
+      "tip": "418fc06d4b117df4d38c3eb365567965f9e439e1",
+      "tree": "18a84fe2582f29bb067a782d9f6e204c30110953",
       "prs": [
         {
           "number": 162,
           "title": "Add check for fields not existing when writing container",
-          "head": "84058561bd7ca7ef18cb18f52b4f3b7dc625dd96",
+          "head": "d567055742d303cefcf9831996fe6d864c34689d",
           "mergeBase": "67b411aacbf9ad2ccf0aaeac0bb4d9d568b568b3",
           "status": "applied"
         },
@@ -109,6 +109,14 @@
           "head": "3ce26e3df2038f2500f502823cbac4cbd2c28703",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
           "status": "applied"
+        },
+        {
+          "number": 180,
+          "title": "Serializer: name the packet in write errors from a compiled protocol",
+          "head": "d31ac124ee75e203797bc118af6b5e34df2f57ad",
+          "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
+          "status": "resolved-ai",
+          "note": "Resolved `test/misc.js`: merged the require into `const { ProtoDef, FullPacketParser, Serializer } = require('../')` (union of both sides), kept the stack's `hash` and `FullPacketParser` describe bloc\n... (208 more bytes cut) (test/misc.js; 12 turns)"
         }
       ]
     },
@@ -167,13 +175,20 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "25a40558db58c04d84ca180021a28ef3bb0f75d2",
-      "tree": "f2aa74093db1234783194f6c533b238fd88f8213",
+      "tip": "555ca55569648fc42d14fd3a2a9414ad411633dd",
+      "tree": "29563ea3b02b41c996f42cffeb1f9b966cd6a8d2",
       "prs": [
         {
           "number": 184,
           "title": "Add Item.toHashedNotch for 1.21.5+ window_click slot claims",
           "head": "0e154a4f48a65f8364c57a691d755064b68f24c4",
+          "mergeBase": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
+          "status": "applied"
+        },
+        {
+          "number": 185,
+          "title": "Expose the custom_data component as item.nbt on 1.20.5+",
+          "head": "ce6b88232544ab9915aa5950085247559f428e77",
           "mergeBase": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
           "status": "applied"
         }
@@ -199,8 +214,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "a0c37fe49f05f127a9720cdb246d9b0acb25f5f6",
-      "tree": "682ed69518cdcd10d44d46e87f5cf33a29cdf136",
+      "tip": "0e7d3293ed82c0881aa775692de1ecf5a071fad0",
+      "tree": "9eafe8824efd0df9d2572cbd7e0e5b6bced3676c",
       "prs": [
         {
           "number": 4021,
@@ -263,7 +278,7 @@
           "title": "fix: drop the physics tick backlog after an event-loop stall instead of draining it",
           "head": "47b1b39a0a48260ccd8ccaca0af17b078c80338b",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4069,
@@ -340,14 +355,14 @@
           "title": "Track the abilities the server grants",
           "head": "caf2555bfbc6be3ac1bf074f4ecbda36978fbc51",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4085,
           "title": "Share one pre-incremented block prediction sequence across dig, use_item_on and use_item",
           "head": "4d203cbf7c79676400f734a7d9d8d50a6e38b63a",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4086,
@@ -361,7 +376,7 @@
           "title": "Report resource packs as ACCEPTED, DOWNLOADED, SUCCESSFULLY_LOADED and deny once",
           "head": "dc290378d252dda9026c5183e2dd2431a58e1ae5",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4088,
@@ -375,7 +390,7 @@
           "title": "activateEntity: send the vanilla interact pair with the real sneak state and hit point",
           "head": "5c912cd25018530584018e2465258ceddd1b7b83",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4090,
@@ -389,7 +404,7 @@
           "title": "Swing the arm after use_item_on when placing, not before",
           "head": "8b4b1476c87f86398a2ca12703084586946b7ca7",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4092,
@@ -410,14 +425,68 @@
           "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
           "head": "53a2bf0821fac569b2b063967f10a79394c98cbb",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
         },
         {
           "number": 4095,
           "title": "Right-click entities through one path, so useOn and mount send the vanilla pair",
           "head": "a35c1ff1a0da8d668289e03f5312f4486e4f5919",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai"
+          "status": "resolved-rerere"
+        },
+        {
+          "number": 4099,
+          "title": "fix: never write movement packets outside the play state",
+          "head": "a0f98d46e1aeb0a00632b192d217841cdff5216c",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved the single conflict in `lib/plugins/physics.js` by keeping both sides' additions to the `login` handler — the stack's `pendingTeleports.length = 0` (with its comment) followed by the PR's `ca\n... (280 more bytes cut) (lib/plugins/physics.js; 8 turns)"
+        },
+        {
+          "number": 4100,
+          "title": "Make the named scoreboard display slots non-enumerable",
+          "head": "2938fa213d44163d4b484d6a369762f5af30cb75",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4101,
+          "title": "Throw a descriptive error when bot.chat is called before login",
+          "head": "072b0fd732f1e648d53d26a3f5ae4c2ec15ff434",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "applied"
+        },
+        {
+          "number": 4102,
+          "title": "Normalize open_window titles to ChatMessage",
+          "head": "e020656e3f7d71c91b6be76e5d1a6c0696083655",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved by keeping both insertions at the same spot in `test/internalTest.js`'s `game` describe block: the stack's two pong tests (second one now closed with its own `})`) followed by the PR's \"windo\n... (164 more bytes cut) (test/internalTest.js; 9 turns)"
+        },
+        {
+          "number": 4103,
+          "title": "Close the open window on respawn like vanilla",
+          "head": "4253118177e353ffb43e4c021fbe74146f774158",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved by keeping the stack's per-window stateIds bookkeeping (`stateIds.clear()`/`delete`) in the login/respawn/close paths while adopting the PR's shared `dropWindow` helper, its vanilla-style `cl\n... (96 more bytes cut) (lib/plugins/inventory.js, test/internalTest.js; 23 turns)"
+        },
+        {
+          "number": 4104,
+          "title": "Accept play-phase resource packs when no resourcePack listener answers them",
+          "head": "217e7f928f87e973a16115c5047a6586c783b2ed",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved `lib/plugins/resource_pack.js` by keeping the stack's `sendResourcePackResult` refactor (which the PR's `acceptResourcePack` line mapped to in the ancestor) and adding the PR's `autoAcceptRes\n... (276 more bytes cut) (lib/plugins/resource_pack.js; 6 turns)"
+        },
+        {
+          "number": 4105,
+          "title": "fix: drop the deferred respawn reply when a newer teleport arrives",
+          "head": "4d48b8fecefd9020158f09cebe2d1b5c75e3392e",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved both conflicts in `lib/plugins/physics.js`: kept the stack's `pendingTeleports` queue (#4099) and placed the PR's `cancelRespawnReply()` (with its comment) as the first statement of `handleTe\n... (311 more bytes cut) (lib/plugins/physics.js; 11 turns)"
         }
       ]
     },
@@ -425,8 +494,8 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "3825df1aa6937cae9584e4f8ca97ff7b533d6798",
-      "tree": "c5358aa6ce24f5c284ab774ce0bb3fdd4e9d5c90",
+      "tip": "09ba20c5ff0ee73bbb6417d6613282b972975f7c",
+      "tree": "2bce8c93ac6098ac083e7ad1f1a8f1979acab449",
       "prs": [
         {
           "number": 375,
@@ -441,6 +510,20 @@
           "head": "e836c40bb6a57660700c911c4e9511f9555546f5",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
           "status": "applied"
+        },
+        {
+          "number": 377,
+          "title": "createHuman: a walkTo for the goal in flight joins that walk instead of superseding it",
+          "head": "021933ef4a41ccd07d56538d0f9df02e4cf3aaa1",
+          "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+          "status": "applied"
+        },
+        {
+          "number": 378,
+          "title": "createHuman: take three-block drops",
+          "head": "ea588494b27fc1c077126d1a87973e1b70cbd26d",
+          "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+          "status": "applied"
         }
       ]
     },
@@ -448,7 +531,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "2bf5c1f1bfd78f63ebe4848319c7134ddd580739",
+      "tip": "34b9125189d074f8c9898eeb8c1ee703642964b7",
       "tree": "3fa7afa9d138b9bc476f05c509c6133b99a760ef",
       "prs": [
         {
