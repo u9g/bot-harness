@@ -24,6 +24,16 @@ const require = (id: string): unknown => {
     return stackRequire(id)
   }
 }
+// Scripts reach for require.resolve('x', { paths: [require.resolve('mineflayer')] }) to load a
+// library out of mineflayer's tree; give the shim a resolve with the same fallback.
+require.resolve = (id: string, options?: { paths?: string[] }): string => {
+  try {
+    return ownRequire.resolve(id, options)
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw e
+    return stackRequire.resolve(id, options)
+  }
+}
 const { pathfinder, Movements, goals, createHuman } = pathfinderPkg
 
 const opts: DaemonOpts = JSON.parse(process.env.MCBOT_OPTS!)
