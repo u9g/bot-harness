@@ -16,3 +16,4 @@ overrides:
   prismarine-physics: workspace:*
   prismarine-viewer: workspace:*
   gl: 9.0.0-rc.10
+linkWorkspacePackages: true
