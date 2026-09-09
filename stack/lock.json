@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "8c6525b6cc0df0e218d01824d724017222e9b05e",
-      "tip": "a9617adc027fc1b4dbc74dfb25201d2ed53df3e4",
+      "tip": "08db6f2a807d35a129be5adc40835a4a3c0939d9",
       "tree": "f220a6abfdf8a23fad883b4dd80d9f72f4e4a661",
       "prs": [
         {
@@ -220,7 +220,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "e9497808e176ed023c4d87ce90ab5490899da8f1",
+      "tip": "1f07d0a4bd4ce3b494b67b152bccefb0ca318fa4",
       "tree": "7badf0171f4cb843e89308420c5a6b8ba8057e78",
       "prs": [
         {
@@ -487,32 +487,28 @@
           "title": "fix: drop the deferred respawn reply when a newer teleport arrives",
           "head": "4d48b8fecefd9020158f09cebe2d1b5c75e3392e",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved lib/plugins/physics.js by keeping the stack's teleport-queue structure with the PR's `cancelRespawnReply()` moved to the top of `handleTeleport` (so any newer teleport drops the pending defer\n... (94 more bytes cut) (lib/plugins/physics.js; 11 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4106,
           "title": "closeWindow(null) is a no-op instead of throwing",
           "head": "9a0d5d64b2e36718b197481033f35f29add87502",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping the stack's three tests and inserting the PR's `closeWindow(null) resolves without sending close_window or emitting windowClose` test verbatim immediately befo\n... (41 more bytes cut) (test/internalTest.js; 11 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4107,
           "title": "fix: answer pings and teleports in packet arrival order",
           "head": "4ac7233799487bc7b105bb8504dd50e04dd9306b",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved by routing pongs through the PR's unified `pendingReplies`/`bot._replyOnNextTick`/`flushReplies()` queue in physics.js (replacing both #4070's pong queue in game.js and #4078's `pendingTelepo\n... (198 more bytes cut) (lib/plugins/game.js, lib/plugins/physics.js, test/internalTest.js; 26 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4108,
           "title": "physics: a teleport leaves the standing flag alone",
           "head": "4f31b3e149a462651e5744497f0d81a6d31990d6",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping both insertions: the stack's \"sends the 1.21.2+ input packets like vanilla\" test followed by the PR's new \"reports the standing flag it had before a teleport w\n... (69 more bytes cut) (test/internalTest.js; 13 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
@@ -520,7 +516,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "55c33c966daf6dbb4f566fb033fe27ad9928e2af",
+      "tip": "4f9d248aa862f5369984222115f88d13e8a28b34",
       "tree": "5472b269faf6ea6ad4975654ce3453e414129bed",
       "prs": [
         {
@@ -556,16 +552,14 @@
           "title": "createHuman: hold the controller through a setback storm",
           "head": "79bed54cb602a431d2210811faf8d936cf584b2b",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "resolved-ai",
-          "note": "Resolved lib/human.js by keeping the stack's synchronous joining `walkTo`/`startWalk` split and adding the PR's setback guard as `Promise.reject` (so it rejects rather than synchronously throws, match\n... (201 more bytes cut) (lib/human.js, readme.md; 15 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 380,
           "title": "createHuman: a walk that stops under an unreachable goal rejects instead of resolving",
           "head": "3191bf0e97f7949aee023c2632093f5c24d0132f",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js: both sides inserted tests at the same spot (after the \"superseded search stops searching\" test), so I kept the stack's two setback tests (`a setback storm...` and `a wal\n... (234 more bytes cut) (test/internalTest.js; 7 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
