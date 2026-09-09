@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import mineflayer, { type Bot, type BotOptions } from 'mineflayer'
 import pathfinderPkg from 'mineflayer-pathfinder'
 import { Vec3 } from 'vec3'
-import type { BotStatus, DaemonOpts, ExecRequest, ExecReply, Request, StatusRequest } from './protocol.ts'
+import type { BotStatus, DaemonOpts, ExecRequest, ExecReply, Request, StatusRequest, TaskInfo } from './protocol.ts'
 import { startRecording, type RecordOpts, type Recording } from './record.ts'
 import { placeInOwnCgroup } from './cgroup.ts'
 
@@ -46,6 +46,8 @@ let human: ReturnType<typeof createHuman> | null = null
 /** Why the current bot's connection ended, null while it is connected. A dead bot still answers
  *  exec (its `state` and packet history are the point of asking), so the reason rides along. */
 let disconnected: string | null = null
+/** Aborted when that bot's connection ends; every exec's `signal` derives from its bot's. */
+const ended = new WeakMap<Bot, AbortSignal>()
 let bot: Bot = createBot()
 
 // What the bot is doing, as opposed to whether this process is alive: a kicked bot keeps its
@@ -82,6 +84,13 @@ function createBot (): Bot {
     void stopRecording('bot ended')
   })
   b.on('messagestr', m => log('chat', m))
+  // Execs started against this bot get a signal that aborts with its connection, so a controller
+  // loop has something to stop on instead of driving the dead entity.
+  const gone = new AbortController()
+  ended.set(b, gone.signal)
+  let why: string | null = null
+  b.on('kicked', r => { why = `kicked: ${typeof r === 'string' ? r : JSON.stringify(r)}` })
+  b.on('end', r => gone.abort(new Error(`bot ${why ?? `ended: ${r}`}`)))
   human = null
   disconnected = null
   return b
@@ -151,11 +160,57 @@ async function stopRecording (why: string): Promise<void> {
   try { await record.stop() } catch (e) { log('recording did not stop cleanly after', why, e) }
 }
 
+interface Task {
+  n: number
+  code: string
+  startedAt: number
+  signal: AbortSignal
+  abortedAt: number | null
+  cancel: (reason: string) => void
+  /** Settles with the exec, never rejects. */
+  done: Promise<void>
+}
+/** Execs that have not settled yet, in start order. */
+const running = new Map<number, Task>()
+/** Numbers execs across the daemon's life; the CLI sends every request as id 1. */
+let execSeq = 0
+
+/** The first line of a script, for log lines and listings. */
+function head (code: string): string {
+  const line = code.split('\n').map(l => l.trim()).find(l => l !== '') ?? ''
+  return line.length > 80 ? line.slice(0, 79) + '…' : line
+}
+const errText = (e: unknown): string => e instanceof Error ? e.stack ?? e.message : String(e)
+const reasonText = (signal: AbortSignal): string => signal.reason instanceof Error ? signal.reason.message : String(signal.reason)
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
+const tasks = {
+  list (): TaskInfo[] {
+    return [...running.values()].map(t => ({
+      exec: t.n,
+      startedAt: new Date(t.startedAt).toISOString(),
+      aborted: t.abortedAt === null ? null : { at: new Date(t.abortedAt).toISOString(), reason: reasonText(t.signal) },
+      code: head(t.code)
+    }))
+  },
+  /** Aborts the exec's `signal`; the code stops when it next looks. Waits `wait` ms to say whether it did. */
+  async cancel (n: number, reason = 'cancelled', wait = 5000): Promise<string> {
+    const t = running.get(n)
+    if (t === undefined) throw new Error(`no running exec ${n}`)
+    t.cancel(reason)
+    const exited = await Promise.race([t.done.then(() => true), sleep(wait).then(() => false)])
+    return exited ? `exec ${n} stopped` : `exec ${n} signalled, still running after ${wait}ms (it stops when its code next checks signal)`
+  }
+}
+
 /** Names visible inside exec'd code, in order. Keep in sync with `usage()` in mcbot.ts. */
-const SCOPE = { bot: () => bot, human: () => (human ??= createHuman(bot)), mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log }
-/** Thunked names are resolved once per exec, so a reconnect is only visible to the next one. */
-const LAZY = new Set(['bot', 'human'])
+const SCOPE = { bot: null, human: null, signal: null, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, tasks, log }
 const SCOPE_NAMES = Object.keys(SCOPE)
+/** `bot`, `human` and `signal` are fixed per exec, so a reconnect is only visible to the next one. */
+function scopeArgs (signal: AbortSignal): unknown[] {
+  const perExec: Record<string, unknown> = { bot, human: (human ??= createHuman(bot)), signal }
+  return SCOPE_NAMES.map(k => k in perExec ? perExec[k] : SCOPE[k as keyof typeof SCOPE])
+}
 
 type ExecFn = (...args: unknown[]) => Promise<unknown>
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (...args: string[]) => ExecFn
@@ -173,14 +228,40 @@ function compile (code: string): ExecFn {
   }
 }
 
-async function run ({ code, timeout = 30_000 }: ExecRequest): Promise<unknown> {
+async function run ({ code, timeout = 30_000, detach = false }: ExecRequest): Promise<unknown> {
+  const n = ++execSeq
   const fn = compile(code)
-  const args = SCOPE_NAMES.map(k => LAZY.has(k) ? (SCOPE[k as 'bot' | 'human'])() : SCOPE[k as keyof typeof SCOPE])
+  const ctl = new AbortController()
+  const signal = AbortSignal.any([ended.get(bot)!, ctl.signal])
+  const result = fn(...scopeArgs(signal)).finally(() => running.delete(n))
+  const startedAt = Date.now()
+  const task: Task = {
+    n, code, signal, startedAt, abortedAt: signal.aborted ? startedAt : null,
+    cancel: reason => ctl.abort(new Error(reason)),
+    done: result.then(() => {}, () => {})
+  }
+  signal.addEventListener('abort', () => { task.abortedAt = Date.now() }, { once: true })
+  running.set(n, task)
+  // Once the caller stops waiting (timeout or detach), whatever the code settles to goes to the log.
+  let waiting = true
+  result.then(
+    v => { if (!waiting) log(`exec ${n} finished:`, serialize(v)) },
+    (e: unknown) => { if (!waiting) log(`exec ${n} failed:`, errText(e)) })
   let timer: NodeJS.Timeout
-  const timedOut = new Promise<never>((_, rej) => {
-    timer = setTimeout(() => rej(new Error(`exec timed out after ${timeout}ms (still running in daemon)`)), timeout)
+  // A detached exec is one nobody waits for: the code gets one turn of the event loop, so a body
+  // that dies on its first line is still reported to the caller, and then runs on as a task.
+  const stopWaiting = new Promise<string>((resolve, reject) => {
+    timer = setTimeout(() => {
+      waiting = false
+      if (detach) {
+        log(`exec ${n} running in background:`, head(code))
+        resolve(`exec ${n} running in background (mcbot tasks ${opts.name} lists it)`)
+      } else {
+        reject(new Error(`exec ${n} timed out after ${timeout}ms (still running: mcbot tasks ${opts.name} lists it, and its result will be logged as "exec ${n} finished")`))
+      }
+    }, detach ? 0 : timeout)
   })
-  try { return await Promise.race([fn(...args), timedOut]) } finally { clearTimeout(timer!) }
+  try { return await Promise.race([result, stopWaiting]) } finally { clearTimeout(timer!) }
 }
 
 const note = (): { disconnected?: string } => (disconnected === null ? {} : { disconnected })
@@ -205,7 +286,7 @@ const server = net.createServer(conn => {
       if (isStatus(req)) { send({ id: req.id, ok: true, value: JSON.stringify(status()) }); continue }
       run(req).then(
         value => send({ id: req.id, ok: true, value: serialize(value), ...note() }),
-        (err: unknown) => send({ id: req.id, ok: false, error: err instanceof Error ? err.stack ?? err.message : String(err), ...note() })
+        (err: unknown) => send({ id: req.id, ok: false, error: errText(err), ...note() })
       ).catch(() => {})
     }
   })

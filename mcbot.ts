@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// mcbot start|exec|record|stop|status|logs|list — see usage()
+// mcbot start|exec|tasks|record|stop|status|logs|list — see usage()
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
-import type { BotOpts, BotStatus, DaemonOpts, ExecReply, ExecRequest, Request, StatusRequest } from './protocol.ts'
+import type { BotOpts, BotStatus, DaemonOpts, ExecReply, ExecRequest, Request, StatusRequest, TaskInfo } from './protocol.ts'
 
 const DIR = process.env.MCBOT_DIR ?? path.join(os.homedir(), '.mcbot')
 fs.mkdirSync(DIR, { recursive: true })
@@ -15,8 +15,10 @@ function usage (): never {
   mcbot start ID [-d] [--host H] [--port P] [-u USERNAME] [-v VERSION=26.1] [--auth offline|microsoft] [--key=value ...]
               runs until the bot process exits (ctrl-c stops it); -d detaches instead
   mcbot exec  ID [-t TIMEOUT_MS] <code>   code is an expression or async fn body
-                                          in scope: bot, human, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, log
+                                          in scope: bot, human, signal, mineflayer, Vec3, goals, Movements, record, require, state, reconnect, tasks, log
   mcbot exec  ID -f FILE | -              read code from file / stdin
+  mcbot exec  ID -d ...                   return at once; the code runs on as a task (signal fires when the bot ends or on cancel)
+  mcbot tasks ID [cancel N]               execs still running: age, whether their signal fired, first line; cancel fires one's signal
   mcbot record ID start [-o FILE.mp4] [--width 640] [--height 360] [--fps 20] [--dist 4] [--workers 1] [--duty 0.25]
   mcbot record ID snapshot [-o FILE.png]  PNG of the latest recorded frame
   mcbot record ID stop                    finish the video; prints its path
@@ -57,7 +59,7 @@ function botId (): string {
   if (!/^[\w-]{1,29}$/.test(id)) { console.error(`bad bot ID ${JSON.stringify(id)}: 1-29 characters from A-Z a-z 0-9 _ -`); process.exit(2) }
   return id
 }
-const name = ['start', 'exec', 'record', 'stop', 'status', 'logs'].includes(cmd) ? botId() : ''
+const name = ['start', 'exec', 'tasks', 'record', 'stop', 'status', 'logs'].includes(cmd) ? botId() : ''
 const files = filesFor(name)
 
 function filesFor (id: string): { sock: string, pidFile: string, logFile: string, infoFile: string } {
@@ -119,7 +121,31 @@ async function exec (): Promise<void> {
   if (str(flags.f)) code = fs.readFileSync(str(flags.f)!, 'utf8')
   else if (rest[0] === '-' || rest.length === 0) code = fs.readFileSync(0, 'utf8')
   else code = rest.join(' ')
-  return send(code)
+  return send(code, { timeout: str(flags.t) ? Number(flags.t) : undefined, detach: flags.d === true || undefined })
+}
+
+/** Sugar over exec for the `tasks` scope object. */
+async function tasks (): Promise<void> {
+  if (rest[0] === 'cancel') {
+    const n = Number(rest[1])
+    if (!Number.isInteger(n)) { console.error('tasks cancel: needs the exec number'); usage() }
+    return send(`tasks.cancel(${n})`)
+  }
+  if (rest.length > 0) usage()
+  const list: TaskInfo[] = JSON.parse(await ask('JSON.stringify(tasks.list())'))
+  if (list.length === 0) console.log('no running execs')
+  for (const t of list) {
+    const state = t.aborted === null ? 'running' : `aborted ${age(t.aborted.at)} ago (${t.aborted.reason})`
+    console.log(`exec ${t.exec}  ${age(t.startedAt)}  ${state}  ${t.code}`)
+  }
+  process.exit(0)
+}
+
+function age (iso: string): string {
+  const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000))
+  if (s < 60) return `${s}s`
+  if (s < 3600) return `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`
+  return `${Math.floor(s / 3600)}h${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`
 }
 
 /** Sugar over exec for the `record` scope object. */
@@ -154,13 +180,19 @@ async function request (req: Request): Promise<ExecReply> {
   })
 }
 
-async function send (code: string): Promise<void> {
-  const req: ExecRequest = { id: 1, code, timeout: str(flags.t) ? Number(flags.t) : undefined }
-  const res = await request(req)
+/** Runs code in the daemon and returns its printed value; an error ends the process. */
+async function ask (code: string, req: Partial<ExecRequest> = {}): Promise<string> {
+  const res = await request({ id: 1, code, ...req })
   // A bot whose connection is gone keeps answering with stale state; say so on stderr.
   if (res.disconnected !== undefined) console.error(`${name} is disconnected (${res.disconnected})`)
-  if (res.ok) { if (res.value !== 'undefined') console.log(res.value); process.exit(0) }
+  if (res.ok) return res.value
   console.error(res.error); process.exit(1)
+}
+
+async function send (code: string, req?: Partial<ExecRequest>): Promise<void> {
+  const value = await ask(code, req)
+  if (value !== 'undefined') console.log(value)
+  process.exit(0)
 }
 
 function stop (): void {
@@ -213,5 +245,5 @@ function list (): void {
   }
 }
 
-const commands: Record<string, () => void | Promise<void>> = { start, exec, record, stop, status, logs, list }
+const commands: Record<string, () => void | Promise<void>> = { start, exec, tasks, record, stop, status, logs, list }
 void (commands[cmd] ?? usage)()
