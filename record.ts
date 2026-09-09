@@ -22,6 +22,8 @@ export interface RecordingStats {
   dropped: number
   /** Bytes handed to ffmpeg's stdin and not yet taken. */
   queued: number
+  /** Set once ffmpeg has exited: null after stop(), the reason after an exit on its own. */
+  ended: string | null
 }
 
 export interface Recording {
@@ -66,7 +68,7 @@ function ffmpeg (args: string[]): { proc: ChildProcess, done: Promise<void> } {
   return { proc, done }
 }
 
-export async function startRecording (bot: Bot, file: string, opts: RecordOpts = {}): Promise<Recording> {
+export async function startRecording (bot: Bot, file: string, opts: RecordOpts = {}, onEnd?: (err: Error) => void): Promise<Recording> {
   const { width = 640, height = 360, fps = 20, viewDistance = 4, numWorkers = 1, duty = 0.25 } = opts
   await ensureDisplay(width, height)
   // A bot whose connection has closed still has its last entity and world, and they never change again.
@@ -146,6 +148,25 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   const video = ffmpeg([...raw, '-r', String(fps), '-i', 'pipe:0', '-vf', 'vflip', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', file])
 
   const stdin = video.proc.stdin!
+  // When ffmpeg exits, a write already in flight rejects async with EPIPE; the meaningful signal is
+  // video.done, so swallow the stream error rather than let it crash the daemon.
+  stdin.on('error', () => {})
+  // null while recording; the reason once ffmpeg has gone. Both stop() and an exit on ffmpeg's own
+  // (crash, disk full, killed) route through teardown; `stopping` tells them apart.
+  let ended: string | null = null
+  let stopping = false
+  const teardown = (): void => {
+    bot.off('move', follow)
+    worldView.removeListenersFromBot(bot)
+    try { viewer.dispose() } catch {}
+    destroyGl()
+  }
+  // ffmpeg exiting before stop() means the file is being abandoned; there is nothing to render into
+  // any more, so stop the loop and let the daemon drop the recording.
+  void video.done.then(
+    () => { if (!stopping) { ended = 'ffmpeg exited before the recording was stopped'; if (timer) clearTimeout(timer); teardown(); onEnd?.(new Error(ended)) } },
+    (e: Error) => { if (!stopping) { ended = e.message; if (timer) clearTimeout(timer); teardown(); onEnd?.(e) } }
+  )
   const pixels = Buffer.alloc(width * height * 4)
   let last: Buffer | null = null
   const frameMs = 1000 / fps
@@ -157,6 +178,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
   let inflight = 0
   let timer: NodeJS.Timeout | null = null
   const tick = (): void => {
+    if (ended !== null || !stdin.writable) return
     const due = Math.floor((performance.now() - t0) / frameMs) + 1
     let cost = 0
     if (inflight === 0 && written < due) {
@@ -187,7 +209,7 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
 
   return {
     file,
-    stats: () => ({ dropped, queued: stdin.writableLength }),
+    stats: () => ({ dropped, queued: stdin.writableLength, ended }),
     async snapshot (out) {
       if (!last) throw new Error('no frame yet')
       const png = ffmpeg([...raw, '-i', 'pipe:0', '-vf', 'vflip', '-frames:v', '1', out])
@@ -196,8 +218,11 @@ export async function startRecording (bot: Bot, file: string, opts: RecordOpts =
       return out
     },
     async stop () {
+      stopping = true
       if (timer) clearTimeout(timer)
       timer = null
+      // ffmpeg already gone on its own: teardown ran, nothing left to close.
+      if (ended !== null) return file
       bot.off('move', follow)
       worldView.removeListenersFromBot(bot)
       // Closing ffmpeg's stdin writes the moov atom; it must run even if GL teardown throws.

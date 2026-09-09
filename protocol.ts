@@ -44,7 +44,7 @@ export interface BotStatus {
   lastEnd?: { at: string, reason: string }
   lastError?: { at: string, message: string }
   /** Present while a recording runs. `dropped` frames are absent from the file. */
-  recording?: { file: string, dropped: number, queued: number }
+  recording?: { file: string, dropped: number, queued: number, ended: string | null }
 }
 
 /** Set when the bot's connection is gone, so a caller sees it even though the exec itself ran. */
