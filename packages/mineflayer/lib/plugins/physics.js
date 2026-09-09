@@ -95,7 +95,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
   function tickPhysics (now) {
     if (bot._client.state !== 'play') return // do nothing outside of the play state (e.g. server transfer configuration phase)
-    while (pendingTeleports.length) handleTeleport(pendingTeleports.shift())
+    flushReplies()
     if (!bot.entity?.position || !Number.isFinite(bot.entity.position.x)) return // entity not ready
     if (bot.blockAt(bot.entity.position) == null) return // check if chunk is unloaded
     if (bot.physicsEnabled && shouldUsePhysics) {
@@ -120,6 +120,9 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     clearInterval(doPhysicsTimer)
     doPhysicsTimer = null
     cancelRespawnReply()
+    clearTimeout(replyTimer)
+    replyTimer = null
+    pendingReplies.length = 0
   }
 
   function sendPacketPosition (position, onGround) {
@@ -446,15 +449,33 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   })
 
   // player position and look (clientbound)
-  // The vanilla client hands every play packet to the client thread, which drains the queue at the
-  // start of a tick (PacketUtils.ensureRunningOnSameThread), so a teleport is answered at most once
-  // per tick however fast the server sends them.
-  const pendingTeleports = []
-  bot._client.on('position', (packet) => { pendingTeleports.push(packet) })
+  // The vanilla client hands every play packet to the client thread, which drains the whole queue at
+  // the start of a tick (PacketUtils.ensureRunningOnSameThread, PacketProcessor.processQueuedPackets)
+  // and writes each reply as the packet is handled. Every queued teleport is answered there, each
+  // with its own accept and position_look, and the tick's own movement packet follows; the queue only
+  // moves the answers off the socket callback, and replies to different packets (a pong, a teleport
+  // confirm) leave in packet arrival order.
+  const pendingReplies = []
+  let replyTimer = null
+
+  function flushReplies () {
+    clearTimeout(replyTimer)
+    replyTimer = null
+    if (bot._client.state !== 'play') return
+    while (pendingReplies.length) pendingReplies.shift()()
+  }
+
+  bot._replyOnNextTick = (reply) => {
+    pendingReplies.push(reply)
+    // While no tick is running (the login packet starts it) a reply waits at most one tick.
+    if (doPhysicsTimer === null && replyTimer === null) replyTimer = setTimeout(flushReplies, PHYSICS_INTERVAL_MS)
+  }
+  bot._client.on('position', (packet) => { bot._replyOnNextTick(() => handleTeleport(packet)) })
 
   function handleTeleport (packet) {
     // A newer teleport supersedes the one a deferred reply would answer.
     cancelRespawnReply()
+
     // Is this necessary? Feels like it might wrongly overwrite hitbox size sometimes
     // e.g. when crouching/crawling/swimming. Can someone confirm?
     bot.entity.height = 1.8
@@ -601,10 +622,10 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   }
 
   let respawnTimer = 0
-  // The deferred respawn reply answers a teleport of the current play session. Once the client
-  // leaves play (start_configuration) or a new session begins (login), the position it carries
-  // means nothing to the server and the play-state packet cannot be written anyway. A newer
-  // teleport cancels it too: the server only accepts a reply to its latest teleport.
+  // The deferred reply to a respawn teleport; the server only accepts a reply to its latest teleport.
+  // It answers a teleport of the current play session: once the client leaves play (start_configuration)
+  // or a new session begins (login), the position it carries means nothing to the server and the
+  // play-state packet cannot be written anyway.
   let respawnReply = null
   function cancelRespawnReply () {
     clearTimeout(respawnReply)
@@ -618,9 +639,9 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   bot.on('respawn', () => { shouldUsePhysics = false })
   bot.on('login', () => {
     shouldUsePhysics = false
-    // A teleport still queued here belongs to the world the bot just left, and its id means nothing
+    // A reply still queued here belongs to the world the bot just left, and its id means nothing
     // to the server it is about to talk to.
-    pendingTeleports.length = 0
+    pendingReplies.length = 0
     cancelRespawnReply()
     if (doPhysicsTimer === null) {
       lastPhysicsFrameTime = performance.now()

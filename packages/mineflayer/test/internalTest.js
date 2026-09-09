@@ -901,6 +901,35 @@ for (const supportedVersion of versionsUnderTest) {
         bot._client.write = originalWrite
       })
 
+      it('reports the standing flag it had before a teleport while physics is disabled', async function () {
+        const client = (await once(server, 'playerJoin'))[0]
+        await client.write('login', bot.test.generateLoginPacket())
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        await client.write('map_chunk', generateChunkPacket(chunk))
+        await once(bot, 'chunkColumnLoad')
+        const onBlock = { x: pos.x + 0.5, y: pos.y + 1, z: pos.z + 0.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, teleportId: 1, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0 }
+        const landed = once(bot, 'forcedMove')
+        await client.write('position', onBlock)
+        await landed
+        await bot.waitForTicks(5)
+        assert.strictEqual(bot.entity.onGround, true, 'standing on the block')
+        bot.physicsEnabled = false
+        const pinned = once(bot, 'forcedMove')
+        await client.write('position', { ...onBlock, teleportId: 2 })
+        await pinned
+        await sleep(200)
+        const grounded = []
+        const onPacket = (data, meta) => {
+          if (!['position', 'position_look', 'look', 'flying'].includes(meta.name)) return
+          grounded.push(data.onGround ?? data.flags?.onGround)
+        }
+        client.on('packet', onPacket)
+        await sleep(1300)
+        client.off('packet', onPacket)
+        assert.ok(grounded.length > 0, 'the position reminder goes out with physics disabled')
+        assert.ok(grounded.every(g => g === true), `every movement packet reports standing: ${JSON.stringify(grounded)}`)
+      })
       it('no movement packets during a server transfer configuration phase', function (done) {
         // Regression test for https://github.com/PrismarineJS/mineflayer/issues/3776
         // While the client is in the configuration phase (Velocity/BungeeCord server
@@ -1426,6 +1455,30 @@ for (const supportedVersion of versionsUnderTest) {
           assert.strictEqual(window.title.constructor.name, 'ChatMessage')
           assert.strictEqual(window.title.toString(), 'Test Chest')
         }
+      })
+
+      it('closeWindow(null) resolves without sending close_window or emitting windowClose', (done) => {
+        server.on('playerJoin', (client) => {
+          const sent = []
+          client.on('packet', (data, meta) => {
+            if (meta.name === 'close_window' || meta.name === 'window_click') sent.push(meta.name)
+          })
+          let closes = 0
+          bot.on('windowClose', () => closes++)
+          const loggedIn = once(bot, 'login')
+          client.write('login', bot.test.generateLoginPacket())
+          loggedIn
+            .then(() => {
+              assert.strictEqual(bot.currentWindow, null)
+              return bot.closeWindow(bot.currentWindow)
+            })
+            .then(() => sleep(100))
+            .then(() => {
+              assert.deepStrictEqual(sent, [])
+              assert.strictEqual(closes, 0)
+            })
+            .then(done, done)
+        })
       })
 
       it('closeWindow follows close_window with a no-op inventory click on pre-1.17 only', (done) => {
@@ -3027,6 +3080,105 @@ for (const supportedVersion of versionsUnderTest) {
               assert.deepStrictEqual(writes, [], 'the teleport must not be answered from inside the packet handler')
               await once(bot, 'forcedMove')
               assert.ok(writes.includes('position_look'), 'the teleport is answered on the next tick')
+            } finally {
+              bot._client.write = write
+            }
+            done()
+          } catch (err) {
+            done(err)
+          }
+        })
+      })
+
+      it('answers every teleport queued for a tick, in arrival order', (done) => {
+        server.on('playerJoin', async (client) => {
+          try {
+            client.write('login', bot.test.generateLoginPacket())
+            const chunk = bot.test.buildChunk()
+            chunk.setBlockType(vec3(1, 65, 1), registry.blocksByName.stone.id)
+            client.write('map_chunk', generateChunkPacket(chunk))
+            await once(bot, 'chunkColumnLoad')
+            const teleport = {
+              x: 1.5,
+              y: 80,
+              z: 1.5,
+              dx: 0,
+              dy: 0,
+              dz: 0,
+              pitch: 0,
+              yaw: 0,
+              flags: bot.supportFeature('positionPacketHasBitflags') ? { x: false, y: false, z: false, yaw: false, pitch: false } : 0,
+              teleportId: 0
+            }
+            client.write('position', teleport)
+            await once(bot, 'forcedMove')
+
+            const replies = []
+            const write = bot._client.write.bind(bot._client)
+            bot._client.write = (name, params) => {
+              if (name === 'position_look') replies.push(params.y)
+              return write(name, params)
+            }
+            try {
+              await new Promise(resolve => bot.once('physicsTick', resolve))
+              replies.length = 0
+              bot._client.emit('position', { ...teleport, y: 90, teleportId: 1 })
+              bot._client.emit('position', { ...teleport, y: 100, teleportId: 2 })
+              await new Promise(resolve => bot.once('physicsTick', resolve))
+              assert.deepStrictEqual(replies, [90, 100], 'each queued teleport gets its own reply on the same tick')
+            } finally {
+              bot._client.write = write
+            }
+            done()
+          } catch (err) {
+            done(err)
+          }
+        })
+      })
+
+      it('answers pings and teleports in the order the packets arrived', function (done) {
+        if (bot.supportFeature('transactionPacketExists')) {
+          this.skip()
+          return
+        }
+        server.on('playerJoin', async (client) => {
+          try {
+            client.write('login', bot.test.generateLoginPacket())
+            const chunk = bot.test.buildChunk()
+            chunk.setBlockType(vec3(1, 65, 1), registry.blocksByName.stone.id)
+            client.write('map_chunk', generateChunkPacket(chunk))
+            await once(bot, 'chunkColumnLoad')
+            const teleport = {
+              x: 1.5,
+              y: 80,
+              z: 1.5,
+              dx: 0,
+              dy: 0,
+              dz: 0,
+              pitch: 0,
+              yaw: 0,
+              flags: bot.supportFeature('positionPacketHasBitflags') ? { x: false, y: false, z: false, yaw: false, pitch: false } : 0,
+              teleportId: 0
+            }
+            client.write('position', teleport)
+            await once(bot, 'forcedMove')
+
+            const writes = []
+            const write = bot._client.write.bind(bot._client)
+            bot._client.write = (name, params) => { writes.push({ name, params }); return write(name, params) }
+            try {
+              await new Promise(resolve => bot.once('physicsTick', resolve))
+              writes.length = 0
+              // Between two ticks the server's ping, teleport and second ping arrive in that order.
+              bot._client.emit('ping', { id: 1 })
+              bot._client.emit('position', { ...teleport, y: 90, teleportId: 1 })
+              bot._client.emit('ping', { id: 2 })
+              assert.deepStrictEqual(writes, [], 'nothing is answered from inside the packet handlers')
+              await once(bot, 'forcedMove')
+              const replies = writes
+                .filter(w => ['pong', 'teleport_confirm', 'position_look'].includes(w.name))
+                .map(w => (w.name === 'pong' ? `pong ${w.params.id}` : w.name))
+              assert.deepStrictEqual(replies, ['pong 1', 'teleport_confirm', 'position_look', 'pong 2'])
             } finally {
               bot._client.write = write
             }
