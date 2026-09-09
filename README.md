@@ -21,6 +21,8 @@ pnpm install
 
 Exec'd code has these names in scope: `bot`, `human` (mineflayer-pathfinder's `createHuman(bot)` controller, built on first use: `human.walkTo(goal, { radius, faceAt, timeout })`, `human.lookAt(point)`, `human.stop()`), `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require` (resolves the harness's own dependencies first, then whatever mineflayer can see, so `require('prismarine-chat')(bot.registry)` and friends work), `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options; awaits the new bot's spawn, and `bot` in the same exec keeps naming the old one), `log`.
 
+Each exec is compiled as its own async function body: declaring one of the names above (`const log = ...`) shadows it for that exec, and declarations do not carry over to later execs, so anything a later exec needs goes on `state` (`state.dig = function () { ... }`).
+
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
 `status` reports the daemon and then the bot, because the two come apart: a kicked bot keeps its daemon, its `bot.entity` and its `physicsEnabled` flag and only stops sending packets, so a control loop can drive it for minutes without noticing. It prints `connected` with the login time, position and health, or `DISCONNECTED` with the last kick, end and error the daemon saw, and exits non-zero unless the bot is connected.
