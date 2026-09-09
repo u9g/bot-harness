@@ -4,8 +4,8 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "8c6525b6cc0df0e218d01824d724017222e9b05e",
-      "tip": "2ad6bb0566b2fc14e265ecd3d7fb862534875039",
-      "tree": "cc17348e8a13e1143867a4220ae81e84dbb889eb",
+      "tip": "a9617adc027fc1b4dbc74dfb25201d2ed53df3e4",
+      "tree": "f220a6abfdf8a23fad883b4dd80d9f72f4e4a661",
       "prs": [
         {
           "number": 1266,
@@ -47,6 +47,13 @@
           "title": "Regenerate pc 1.10, 1.11 and 1.12 recipes from the game",
           "head": "2e266c199adf7b0e1275ae9a826468555ff53289",
           "mergeBase": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
+          "status": "applied"
+        },
+        {
+          "number": 1284,
+          "title": "Fix pc/26.1 client_command actionId: plain varint, not a mapper",
+          "head": "0d2e58e8dcf8d444cef02466452afa48f0b9e764",
+          "mergeBase": "8c6525b6cc0df0e218d01824d724017222e9b05e",
           "status": "applied"
         }
       ]
@@ -213,8 +220,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "e5259bdab2e40c8d78895e38f9f5ec184b4286a9",
-      "tree": "9eafe8824efd0df9d2572cbd7e0e5b6bced3676c",
+      "tip": "e9497808e176ed023c4d87ce90ab5490899da8f1",
+      "tree": "7badf0171f4cb843e89308420c5a6b8ba8057e78",
       "prs": [
         {
           "number": 4021,
@@ -331,8 +338,8 @@
         {
           "number": 4078,
           "title": "fix: answer a server teleport at the next tick, like the vanilla packet processor",
-          "head": "e199f22fcfcaa470f6d9f521ba8029472dfefd92",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "head": "eccb3c4b0d8ef83382dda1ecadfe21a3bcf6f3a8",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
           "status": "applied"
         },
         {
@@ -480,7 +487,32 @@
           "title": "fix: drop the deferred respawn reply when a newer teleport arrives",
           "head": "4d48b8fecefd9020158f09cebe2d1b5c75e3392e",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved lib/plugins/physics.js by keeping the stack's teleport-queue structure with the PR's `cancelRespawnReply()` moved to the top of `handleTeleport` (so any newer teleport drops the pending defer\n... (94 more bytes cut) (lib/plugins/physics.js; 11 turns)"
+        },
+        {
+          "number": 4106,
+          "title": "closeWindow(null) is a no-op instead of throwing",
+          "head": "9a0d5d64b2e36718b197481033f35f29add87502",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping the stack's three tests and inserting the PR's `closeWindow(null) resolves without sending close_window or emitting windowClose` test verbatim immediately befo\n... (41 more bytes cut) (test/internalTest.js; 11 turns)"
+        },
+        {
+          "number": 4107,
+          "title": "fix: answer pings and teleports in packet arrival order",
+          "head": "4ac7233799487bc7b105bb8504dd50e04dd9306b",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved by routing pongs through the PR's unified `pendingReplies`/`bot._replyOnNextTick`/`flushReplies()` queue in physics.js (replacing both #4070's pong queue in game.js and #4078's `pendingTelepo\n... (198 more bytes cut) (lib/plugins/game.js, lib/plugins/physics.js, test/internalTest.js; 26 turns)"
+        },
+        {
+          "number": 4108,
+          "title": "physics: a teleport leaves the standing flag alone",
+          "head": "4f31b3e149a462651e5744497f0d81a6d31990d6",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping both insertions: the stack's \"sends the 1.21.2+ input packets like vanilla\" test followed by the PR's new \"reports the standing flag it had before a teleport w\n... (69 more bytes cut) (test/internalTest.js; 13 turns)"
         }
       ]
     },
@@ -488,8 +520,8 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "51b5c14245277299ef2ec1c69d89edd95cf0209f",
-      "tree": "2bce8c93ac6098ac083e7ad1f1a8f1979acab449",
+      "tip": "55c33c966daf6dbb4f566fb033fe27ad9928e2af",
+      "tree": "5472b269faf6ea6ad4975654ce3453e414129bed",
       "prs": [
         {
           "number": 375,
@@ -518,6 +550,22 @@
           "head": "ea588494b27fc1c077126d1a87973e1b70cbd26d",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
           "status": "applied"
+        },
+        {
+          "number": 379,
+          "title": "createHuman: hold the controller through a setback storm",
+          "head": "79bed54cb602a431d2210811faf8d936cf584b2b",
+          "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+          "status": "resolved-ai",
+          "note": "Resolved lib/human.js by keeping the stack's synchronous joining `walkTo`/`startWalk` split and adding the PR's setback guard as `Promise.reject` (so it rejects rather than synchronously throws, match\n... (201 more bytes cut) (lib/human.js, readme.md; 15 turns)"
+        },
+        {
+          "number": 380,
+          "title": "createHuman: a walk that stops under an unreachable goal rejects instead of resolving",
+          "head": "3191bf0e97f7949aee023c2632093f5c24d0132f",
+          "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js: both sides inserted tests at the same spot (after the \"superseded search stops searching\" test), so I kept the stack's two setback tests (`a setback storm...` and `a wal\n... (234 more bytes cut) (test/internalTest.js; 7 turns)"
         }
       ]
     },
