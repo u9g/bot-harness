@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "8c6525b6cc0df0e218d01824d724017222e9b05e",
-      "tip": "806286930143c04ffd02912496611f380f21aff0",
+      "tip": "2ad6bb0566b2fc14e265ecd3d7fb862534875039",
       "tree": "cc17348e8a13e1143867a4220ae81e84dbb889eb",
       "prs": [
         {
@@ -79,7 +79,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "418fc06d4b117df4d38c3eb365567965f9e439e1",
+      "tip": "bb8e08b71c3c8495f333114555419e1f2e628c99",
       "tree": "18a84fe2582f29bb067a782d9f6e204c30110953",
       "prs": [
         {
@@ -115,8 +115,7 @@
           "title": "Serializer: name the packet in write errors from a compiled protocol",
           "head": "d31ac124ee75e203797bc118af6b5e34df2f57ad",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-          "status": "resolved-ai",
-          "note": "Resolved `test/misc.js`: merged the require into `const { ProtoDef, FullPacketParser, Serializer } = require('../')` (union of both sides), kept the stack's `hash` and `FullPacketParser` describe bloc\n... (208 more bytes cut) (test/misc.js; 12 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
@@ -175,7 +174,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "555ca55569648fc42d14fd3a2a9414ad411633dd",
+      "tip": "3830dcb4956ff47dcff33d1625c9897a615ec8be",
       "tree": "29563ea3b02b41c996f42cffeb1f9b966cd6a8d2",
       "prs": [
         {
@@ -214,7 +213,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "0e7d3293ed82c0881aa775692de1ecf5a071fad0",
+      "tip": "e5259bdab2e40c8d78895e38f9f5ec184b4286a9",
       "tree": "9eafe8824efd0df9d2572cbd7e0e5b6bced3676c",
       "prs": [
         {
@@ -439,8 +438,7 @@
           "title": "fix: never write movement packets outside the play state",
           "head": "a0f98d46e1aeb0a00632b192d217841cdff5216c",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved the single conflict in `lib/plugins/physics.js` by keeping both sides' additions to the `login` handler — the stack's `pendingTeleports.length = 0` (with its comment) followed by the PR's `ca\n... (280 more bytes cut) (lib/plugins/physics.js; 8 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4100,
@@ -461,32 +459,28 @@
           "title": "Normalize open_window titles to ChatMessage",
           "head": "e020656e3f7d71c91b6be76e5d1a6c0696083655",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved by keeping both insertions at the same spot in `test/internalTest.js`'s `game` describe block: the stack's two pong tests (second one now closed with its own `})`) followed by the PR's \"windo\n... (164 more bytes cut) (test/internalTest.js; 9 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4103,
           "title": "Close the open window on respawn like vanilla",
           "head": "4253118177e353ffb43e4c021fbe74146f774158",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved by keeping the stack's per-window stateIds bookkeeping (`stateIds.clear()`/`delete`) in the login/respawn/close paths while adopting the PR's shared `dropWindow` helper, its vanilla-style `cl\n... (96 more bytes cut) (lib/plugins/inventory.js, test/internalTest.js; 23 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4104,
           "title": "Accept play-phase resource packs when no resourcePack listener answers them",
           "head": "217e7f928f87e973a16115c5047a6586c783b2ed",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved `lib/plugins/resource_pack.js` by keeping the stack's `sendResourcePackResult` refactor (which the PR's `acceptResourcePack` line mapped to in the ancestor) and adding the PR's `autoAcceptRes\n... (276 more bytes cut) (lib/plugins/resource_pack.js; 6 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4105,
           "title": "fix: drop the deferred respawn reply when a newer teleport arrives",
           "head": "4d48b8fecefd9020158f09cebe2d1b5c75e3392e",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved both conflicts in `lib/plugins/physics.js`: kept the stack's `pendingTeleports` queue (#4099) and placed the PR's `cancelRespawnReply()` (with its comment) as the first statement of `handleTe\n... (311 more bytes cut) (lib/plugins/physics.js; 11 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
@@ -494,7 +488,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "09ba20c5ff0ee73bbb6417d6613282b972975f7c",
+      "tip": "51b5c14245277299ef2ec1c69d89edd95cf0209f",
       "tree": "2bce8c93ac6098ac083e7ad1f1a8f1979acab449",
       "prs": [
         {
@@ -531,7 +525,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "34b9125189d074f8c9898eeb8c1ee703642964b7",
+      "tip": "f7a72796ee09305dda4e9e8224aa6f60fb0baf0b",
       "tree": "3fa7afa9d138b9bc476f05c509c6133b99a760ef",
       "prs": [
         {
