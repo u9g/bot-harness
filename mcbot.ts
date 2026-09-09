@@ -72,11 +72,21 @@ function pidOf (id: string): number | null {
   try { return Number(fs.readFileSync(filesFor(id).pidFile, 'utf8')) } catch { return null }
 }
 const pid = (): number | null => pidOf(name)
-function alive (p: number): boolean { try { process.kill(p, 0); return true } catch { return false } }
+// kill(0) passes for any live process, and a dead daemon's pid gets reused; the daemon that owns a
+// pid file is the process whose MCBOT_OPTS names that file. Without /proc, kill(0) is all there is.
+function alive (p: number, pidFile: string): boolean {
+  try { process.kill(p, 0) } catch { return false }
+  let environ: string
+  try { environ = fs.readFileSync(`/proc/${p}/environ`, 'utf8') } catch (e) {
+    return (e as NodeJS.ErrnoException).code !== 'EACCES'
+  }
+  const opts = environ.split('\0').find(v => v.startsWith('MCBOT_OPTS='))?.slice('MCBOT_OPTS='.length)
+  try { return opts !== undefined && (JSON.parse(opts) as DaemonOpts).pidFile === pidFile } catch { return false }
+}
 
 function start (): void {
   const p = pid()
-  if (p && alive(p)) { console.error(`${name} already running (pid ${p})`); process.exit(1) }
+  if (p && alive(p, files.pidFile)) { console.error(`${name} already running (pid ${p})`); process.exit(1) }
   const { d, host, port, u, username, v, version, auth, ...extra } = flags
   const detached = d !== undefined
   const bot: BotOpts = {
@@ -165,7 +175,7 @@ async function send (code: string): Promise<void> {
 
 function stop (): void {
   const p = pid()
-  if (!p || !alive(p)) { console.error(`${name} not running`); for (const f of [files.pidFile, files.infoFile]) { try { fs.unlinkSync(f) } catch {} }; process.exit(1) }
+  if (!p || !alive(p, files.pidFile)) { console.error(`${name} not running`); for (const f of [files.pidFile, files.infoFile]) { try { fs.unlinkSync(f) } catch {} }; process.exit(1) }
   process.kill(p, 'SIGTERM')
   console.log(`sent SIGTERM to ${name} (pid ${p})`)
 }
@@ -174,7 +184,7 @@ function stop (): void {
 // state and not just the process: a kicked bot leaves everything else looking healthy.
 async function status (): Promise<void> {
   const p = pid()
-  const up = p !== null && alive(p)
+  const up = p !== null && alive(p, files.pidFile)
   if (!up) { console.log(`${name}: stopped  sock=${files.sock}`); process.exit(1) }
   console.log(`${name}: daemon running pid ${p}  sock=${files.sock}`)
   let res: ExecReply
@@ -209,7 +219,7 @@ function list (): void {
       const info = JSON.parse(fs.readFileSync(filesFor(id).infoFile, 'utf8'))
       target = `  -> ${info.host}:${info.port} as ${info.username} (${info.version}, since ${info.started})`
     } catch {}
-    console.log(`${id}: ${alive(p) ? `running pid ${p}` : 'stale'}${target}`)
+    console.log(`${id}: ${alive(p, filesFor(id).pidFile) ? `running pid ${p}` : 'stale'}${target}`)
   }
 }
 
