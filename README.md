@@ -13,13 +13,16 @@ pnpm install
 ./mcbot.ts exec t1 -f script.js                                       # or `-` for stdin
 ./mcbot.ts exec t1 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
 ./mcbot.ts exec t1 'await human.walkTo(new Vec3(10, 64, -5))'         # ...or walk it the way a player would
+./mcbot.ts exec t1 -d -f loop.js                                      # returns at once; loop.js runs on as a task while `!signal.aborted`
+./mcbot.ts tasks t1                                                   # execs still running: age, whether their signal fired, first line
+./mcbot.ts tasks t1 cancel 3                                          # abort exec 3's signal and say whether it stopped
 ./mcbot.ts record t1 start                                            # first-person mp4 of what the bot sees
 ./mcbot.ts record t1 snapshot -o now.png                              # PNG of the latest frame
 ./mcbot.ts record t1 stop                                             # prints the mp4 path
 ./mcbot.ts stop t1
 ```
 
-Exec'd code has these names in scope: `bot`, `human` (mineflayer-pathfinder's `createHuman(bot)` controller, built on first use: `human.walkTo(goal, { radius, faceAt, timeout })`, `human.lookAt(point)`, `human.stop()`), `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require` (resolves the harness's own dependencies first, then whatever mineflayer can see, so `require('prismarine-chat')(bot.registry)` and friends work), `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options; awaits the new bot's spawn, and `bot` in the same exec keeps naming the old one), `log`.
+Exec'd code has these names in scope: `bot`, `human` (mineflayer-pathfinder's `createHuman(bot)` controller, built on first use: `human.walkTo(goal, { radius, faceAt, timeout })`, `human.lookAt(point)`, `human.stop()`), `signal` (an `AbortSignal` that fires when this exec's `bot` ends or `tasks.cancel` names the exec; see below), `mineflayer`, `Vec3`, `goals` and `Movements` (from mineflayer-pathfinder, which is loaded into every bot; `bot.pathfinder.setMovements(new Movements(bot))` to customise), `record` (`record.start(file?, opts?)`, `record.snapshot(file?)`, `record.stop()`; see below), `require` (resolves the harness's own dependencies first, then whatever mineflayer can see, so `require('prismarine-chat')(bot.registry)` and friends work), `state` (object that persists across execs), `reconnect(opts?)` (end the bot and create a new one, optionally overriding options; awaits the new bot's spawn, and `bot` in the same exec keeps naming the old one), `tasks` (`tasks.list()`, `tasks.cancel(n, reason?)`; see below), `log`.
 
 `start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
 
@@ -39,7 +42,23 @@ Every command except `list` takes the bot's ID first: `start` requires one (1-29
 
 Once the bot's connection is gone it keeps answering `exec` with whatever state it still holds, so `state` and the packet history stay readable; every reply then carries the reason on stderr (`t1 is disconnected (kicked: ...)`). `reconnect()` clears it.
 
-`-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon, and when it settles its value or error goes to the session log (`mcbot logs`) as `late result for exec N` / `late error for exec N`, where N is the exec number in the timeout message.
+`-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon, and when it settles its value or error goes to the session log (`mcbot logs`) as `exec N finished` / `exec N failed`, where N is the exec number in the timeout message.
+
+## Background loops
+
+A controller that keeps playing after the exec returns is an exec started with `-d`: the reply comes as soon as the code is running (an error on its first line still comes back as an error), and the code runs on as a task until it returns, throws, or is told to stop. Nothing can stop JavaScript from outside, so the telling goes through `signal`: it is aborted when the exec's `bot` ends, whether by a kick, `bot.quit()` or `reconnect()`, with the kick reason as `signal.reason.message`, and when `mcbot tasks ID cancel N` or `tasks.cancel(N)` names the exec. A loop should test it on every turn and hand it to whatever accepts one:
+
+```js
+// mcbot exec t1 -d -f loop.js
+while (!signal.aborted) {
+  await human.walkTo(next(), { timeout: 10_000 }).catch(e => log('walk failed', e.message))
+  signal.throwIfAborted()
+  await bot.waitForTicks(20)
+}
+log('loop over:', signal.reason.message)
+```
+
+`mcbot tasks ID` lists the execs that have not settled, `-d` or not, with their age, whether their signal has fired and why, and the first line of their code; one whose signal fired minutes ago is a loop that does not check it. `mcbot tasks ID cancel N` aborts exec N's signal and waits up to 5 s to report `stopped` or `still running`; a loop mid-`walkTo` on a dead bot notices at that walk's timeout. A finished task logs `exec N finished` or `exec N failed`, like a timed-out exec. A loop started as `void main()` from an exec body is not a task: the daemon has no handle on it, so it is neither listed nor cancellable, and only the `signal` its closure keeps ends it.
 
 Layout: `mcbot.ts` is the CLI, `daemon.ts` is the detached process (bot + unix socket eval server), `protocol.ts` is the newline-delimited JSON wire format between them.
 
