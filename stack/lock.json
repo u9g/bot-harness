@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "8c6525b6cc0df0e218d01824d724017222e9b05e",
-      "tip": "e892335cc6add9958932c6e231e927b8651ff740",
-      "tree": "f220a6abfdf8a23fad883b4dd80d9f72f4e4a661",
+      "baseSha": "9025cb4e1e1256e5808e93edc628a3094a271dc1",
+      "tip": "d5f939489e506df6076270380c2e4a6e77d40d5f",
+      "tree": "8473a761e7bed29cd5d486fa6f79238c2a6a72ab",
       "prs": [
         {
           "number": 1266,
@@ -220,8 +220,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "87566409581821bad7cbe037531f5e8be771e086",
-      "tree": "7badf0171f4cb843e89308420c5a6b8ba8057e78",
+      "tip": "9fb89cb06e1ebb78abd581d301281998b92344e9",
+      "tree": "0655da3662b115bea20403b9e84234bda1e27296",
       "prs": [
         {
           "number": 4021,
@@ -254,8 +254,8 @@
         {
           "number": 4063,
           "title": "physics: send the movement input packets the vanilla client sends",
-          "head": "87a6a00408ab9ac3e432150a878803f3ed8bda77",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "head": "fc480ee8c456de87ce77769b31ba8bcf88703043",
+          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
           "status": "applied"
         },
         {
@@ -284,19 +284,13 @@
           "title": "fix: drop the physics tick backlog after an event-loop stall instead of draining it",
           "head": "47b1b39a0a48260ccd8ccaca0af17b078c80338b",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved `test/internalTest.js` by keeping both sides of the conflict in order: the stack's three tests (1.21.2+ teleport velocity delta flags, ungrounded `position_look` reply, ungrounded `look` repl\n... (211 more bytes cut) (test/internalTest.js; 10 turns)"
         },
         {
           "number": 4069,
           "title": "fix: apply a server-sent held slot without echoing it",
           "head": "d21e8324741b3663eed691dfc4495a596a9c9653",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "applied"
-        },
-        {
-          "number": 4070,
-          "title": "fix: answer ping at the start of the next tick, before movement packets",
-          "head": "b99c59b7f326fba8923a221ca7836b6365171c12",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
           "status": "applied"
         },
@@ -333,13 +327,6 @@
           "title": "test: build only the versions under test",
           "head": "46c13151b62e71caa58587e061ca4f199f1ad38b",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "applied"
-        },
-        {
-          "number": 4078,
-          "title": "fix: answer a server teleport at the next tick, like the vanilla packet processor",
-          "head": "eccb3c4b0d8ef83382dda1ecadfe21a3bcf6f3a8",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
           "status": "applied"
         },
         {
@@ -442,10 +429,11 @@
         },
         {
           "number": 4099,
-          "title": "fix: never write movement packets outside the play state",
-          "head": "a0f98d46e1aeb0a00632b192d217841cdff5216c",
+          "title": "fix: cancel the deferred respawn reply once it is stale, and write no movement packets outside play",
+          "head": "0556385444e76b348b7e16bad9cd476bbda21afc",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved. In `test/internalTest.js` I kept all four tests the stack added in the `physics` describe (teleport delta-flag velocity, ungrounded `position_look` reply, ungrounded `look` reply, tick-backl\n... (392 more bytes cut) (test/internalTest.js; 10 turns)"
         },
         {
           "number": 4100,
@@ -466,7 +454,7 @@
           "title": "Normalize open_window titles to ChatMessage",
           "head": "e020656e3f7d71c91b6be76e5d1a6c0696083655",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "applied"
         },
         {
           "number": 4103,
@@ -483,25 +471,20 @@
           "status": "resolved-rerere"
         },
         {
-          "number": 4105,
-          "title": "fix: drop the deferred respawn reply when a newer teleport arrives",
-          "head": "4d48b8fecefd9020158f09cebe2d1b5c75e3392e",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
-        },
-        {
           "number": 4106,
           "title": "closeWindow(null) is a no-op instead of throwing",
           "head": "9a0d5d64b2e36718b197481033f35f29add87502",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Both sides inserted a new test at the same anchor before the existing `closeWindow follows close_window...` test, so I kept both: the stack's `window titles are ChatMessages...` test followed by the P\n... (133 more bytes cut) (test/internalTest.js; 9 turns)"
         },
         {
           "number": 4107,
-          "title": "fix: answer pings and teleports in packet arrival order",
+          "title": "fix: answer pings and teleports at the start of the next tick, in arrival order",
           "head": "4ac7233799487bc7b105bb8504dd50e04dd9306b",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "conflict",
+          "note": "lib/plugins/physics.js, test/internalTest.js: Cannot create a string longer than 0x1fffffe8 characters"
         },
         {
           "number": 4108,
