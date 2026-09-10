@@ -142,14 +142,10 @@ function inject (bot, options) {
     bot.game.serverBrand = serverBrand
   })
 
-  // Each ping is answered exactly once. In the play state the vanilla client answers from the
-  // client thread, which handles every packet in arrival order at the start of the next tick
-  // (before that tick's movement packet), so the pong joins the physics plugin's reply queue and
-  // keeps its place relative to the teleports around it. Outside the play state, or without the
-  // physics plugin, the pong is written immediately.
+  // mimic the vanilla 1.17 client to prevent anticheat kicks
   bot._client.on('ping', (data) => {
-    const pong = () => bot._client.write('pong', { id: data.id })
-    if (bot._client.state === 'play' && bot._replyOnNextTick) bot._replyOnNextTick(pong)
-    else pong()
+    bot._client.write('pong', {
+      id: data.id
+    })
   })
 }
