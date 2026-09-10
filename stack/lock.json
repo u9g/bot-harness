@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "9025cb4e1e1256e5808e93edc628a3094a271dc1",
-      "tip": "d5f939489e506df6076270380c2e4a6e77d40d5f",
+      "tip": "dd2e395d458038f984bf4a670af9940296a45f46",
       "tree": "8473a761e7bed29cd5d486fa6f79238c2a6a72ab",
       "prs": [
         {
@@ -220,8 +220,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "9fb89cb06e1ebb78abd581d301281998b92344e9",
-      "tree": "0655da3662b115bea20403b9e84234bda1e27296",
+      "tip": "18db26f31deecec98f6f54de3f42c3b75499155f",
+      "tree": "91a699bb6705302f1c8580c1e944cf85a4d51d99",
       "prs": [
         {
           "number": 4021,
@@ -284,8 +284,7 @@
           "title": "fix: drop the physics tick backlog after an event-loop stall instead of draining it",
           "head": "47b1b39a0a48260ccd8ccaca0af17b078c80338b",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "resolved-ai",
-          "note": "Resolved `test/internalTest.js` by keeping both sides of the conflict in order: the stack's three tests (1.21.2+ teleport velocity delta flags, ungrounded `position_look` reply, ungrounded `look` repl\n... (211 more bytes cut) (test/internalTest.js; 10 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4069,
@@ -432,8 +431,7 @@
           "title": "fix: cancel the deferred respawn reply once it is stale, and write no movement packets outside play",
           "head": "0556385444e76b348b7e16bad9cd476bbda21afc",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved. In `test/internalTest.js` I kept all four tests the stack added in the `physics` describe (teleport delta-flag velocity, ungrounded `position_look` reply, ungrounded `look` reply, tick-backl\n... (392 more bytes cut) (test/internalTest.js; 10 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4100,
@@ -475,16 +473,15 @@
           "title": "closeWindow(null) is a no-op instead of throwing",
           "head": "9a0d5d64b2e36718b197481033f35f29add87502",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Both sides inserted a new test at the same anchor before the existing `closeWindow follows close_window...` test, so I kept both: the stack's `window titles are ChatMessages...` test followed by the P\n... (133 more bytes cut) (test/internalTest.js; 9 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4107,
           "title": "fix: answer pings and teleports at the start of the next tick, in arrival order",
           "head": "4ac7233799487bc7b105bb8504dd50e04dd9306b",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "lib/plugins/physics.js, test/internalTest.js: Cannot create a string longer than 0x1fffffe8 characters"
+          "status": "resolved-ai",
+          "note": "Resolved by keeping both sides' changes: the PR's single arrival-ordered next-tick reply queue for pings/teleports in physics.js (with #4099's `cancelRespawnReply()` retained on packet arrival, in cle\n... (102 more bytes cut) (lib/plugins/physics.js, test/internalTest.js; 21 turns)"
         },
         {
           "number": 4108,
