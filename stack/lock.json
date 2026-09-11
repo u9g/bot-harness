@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "9025cb4e1e1256e5808e93edc628a3094a271dc1",
-      "tip": "d44c276468bb43acb0821278b548e25084d464a5",
-      "tree": "55dcbd058722787f0066aa0a7d2b2f3a3d961da0",
+      "baseSha": "57fa53e2b4bf4b1ef491166ebf7eb8b338cb7425",
+      "tip": "d9b900b1c81a8427b6e4e5c69085e482b27a3ed3",
+      "tree": "6e8b3f5696f3e3c13449151c7a6543c640c7c078",
       "prs": [
         {
           "number": 1266,
@@ -220,7 +220,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "deb31db845fdde896bb4fa5ff15d5d920311512c",
+      "tip": "56f579dfb75fd289e2cec5c4b4483283fc484af6",
       "tree": "405d4fcf6f2c271382210f91d02e97517ac852d9",
       "prs": [
         {
@@ -340,8 +340,7 @@
           "title": "use_item and use_item_on like the vanilla client: shared prediction sequence, cursor on the clicked face, no empty-hand use, swing after the packet",
           "head": "fb1d35fd08b54119107b63c1541a7d2430094205",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping both sides of each add/add conflict: HEAD's `held_item_slot` and `scoreboard reset on login` describes remain fully intact, with the PR's `generic place` and `\n... (268 more bytes cut) (test/internalTest.js; 12 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4086,
@@ -369,8 +368,7 @@
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
           "head": "8ccbffeea632aa63a0857fb69a9805f5819899ce",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved by keeping both sides' inserted describes — stack's `block actions` + `abilities`, then the PR's `entity interaction` — reusing the shared closing tail for the last block. (test/internalTest.js; 14 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4093,
@@ -384,8 +382,7 @@
           "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
           "head": "36e6265f3b23a6fac255443b9041e1090c584cc8",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved `test/internalTest.js` by keeping all three stack-added blocks (`placeBlock`, `held_item_slot`, `scoreboard reset on login`) verbatim and inserting the PR's new `describe('digging', ...)` tes\n... (139 more bytes cut) (test/internalTest.js; 19 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4099,
@@ -399,8 +396,7 @@
           "title": "Make the named scoreboard display slots non-enumerable",
           "head": "2938fa213d44163d4b484d6a369762f5af30cb75",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping both insertions at the same spot: the stack's `describe('teams', ...)` block followed by the PR's new `describe('scoreboard', ...)` block, both before `describ\n... (59 more bytes cut) (test/internalTest.js; 10 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4101,
