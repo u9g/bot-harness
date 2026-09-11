@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "57fa53e2b4bf4b1ef491166ebf7eb8b338cb7425",
-      "tip": "c9cb9b251c721c5df543062730c854bfbb330529",
-      "tree": "6e8b3f5696f3e3c13449151c7a6543c640c7c078",
+      "baseSha": "0c9f59011af7082e51b5fec97abe5a36f9e12ee6",
+      "tip": "09c134ed06044acd3becd1f428842055b0974bd2",
+      "tree": "84324f5b6a0ff4b4bce30395208a1983de9a48ff",
       "prs": [
         {
           "number": 1266,
@@ -220,7 +220,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "5cc6c7215c59f5e8642afc6a4308b3ef457f250d",
+      "tip": "90643dcd1118037edec1899c4860d2db3a5708e3",
       "tree": "405d4fcf6f2c271382210f91d02e97517ac852d9",
       "prs": [
         {
