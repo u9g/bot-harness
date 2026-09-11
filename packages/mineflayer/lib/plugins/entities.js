@@ -863,11 +863,6 @@ function inject (bot) {
     : (target) => bot._client.write('use_entity', { target: target.id, mouse: 1, sneaking: bot.getControlState('sneak') })
 
   function attack (target, swing = true) {
-    // The server kicks a client that attacks itself, an item or an experience orb
-    // (multiplayer.disconnect.invalid_entity_attacked)
-    if (target.id === bot.entity.id || target.name?.toLowerCase() === 'item' || target.name === 'experience_orb') {
-      throw new Error(`attack: cannot attack ${target.name} entity ${target.id}`)
-    }
     // arm animation comes before the use_entity packet on 1.8
     if (bot.supportFeature('armAnimationBeforeUse')) {
       if (swing) {

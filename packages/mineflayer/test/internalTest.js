@@ -330,7 +330,7 @@ for (const supportedVersion of versionsUnderTest) {
         it('trusts the replaceable block tag sent by the server', (done) => {
           const Item = require('prismarine-item')(supportedVersion)
           bot.on('chunkColumnLoad', () => {
-            bot.inventory.updateSlot(36, new Item(bot.registry.blocksByName.stone.id, 1))
+            bot.inventory.updateSlot(36, new Item(bot.registry.itemsByName.stone.id, 1))
             bot._placeBlockWithOptions(bot.blockAt(below), vec3(0, 1, 0), { forceLook: true }).catch(() => {})
           })
           server.on('playerJoin', (client) => {
@@ -1523,31 +1523,6 @@ for (const supportedVersion of versionsUnderTest) {
       })
     })
 
-    describe('attack', () => {
-      it('rejects targets the server kicks for and attacks the rest', (done) => {
-        server.on('playerJoin', async (client) => {
-          try {
-            await bot.test.pluginsLoaded
-            const loggedIn = once(bot, 'login')
-            await client.write('login', bot.test.generateLoginPacket())
-            await loggedIn
-            const writes = []
-            bot._client.write = (name, params) => { writes.push(name) }
-            assert.throws(() => bot.attack(bot.entity), /cannot attack/)
-            assert.throws(() => bot.attack({ id: 11, name: 'item' }), /cannot attack/)
-            assert.throws(() => bot.attack({ id: 12, name: 'experience_orb' }), /cannot attack/)
-            assert.deepStrictEqual(writes, [])
-            bot.attack({ id: 13, name: 'zombie' })
-            assert.strictEqual(writes.length, 2)
-            assert.ok(writes.includes('arm_animation'))
-            done()
-          } catch (err) {
-            done(err)
-          }
-        })
-      })
-    })
-
     describe('rain', () => {
       it('flips isRaining on rain level zero-crossings without start_raining', (done) => {
         // Vanilla 26.1 can bring rain in with only rain_level_change ramps,
@@ -1690,7 +1665,6 @@ for (const supportedVersion of versionsUnderTest) {
 
       it('useOn and mount send the same interact pair as activateEntity', (done) => {
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           const loggedIn = once(bot, 'login')
           await client.write('login', bot.test.generateLoginPacket())
           await loggedIn
@@ -1704,10 +1678,9 @@ for (const supportedVersion of versionsUnderTest) {
           bot.useOn(entity)
           bot.mount(entity)
           try {
-            const useEntityHasLocation = registry.protocol.play.toServer.types.packet_use_entity[1].some(field => field.name === 'location')
             // One right click is interact_at then interact before 26.1, and a single located
             // interact from 26.1 on; either way both actions send the same thing.
-            const perClick = useEntityHasLocation ? 1 : 2
+            const perClick = registry.supportFeature('useEntityHasLocation') ? 1 : 2
             const sent = writes.filter(w => w.name === 'use_entity')
             assert.strictEqual(sent.length, 2 * perClick)
             assert.deepStrictEqual(sent.slice(0, perClick), sent.slice(perClick))
@@ -2660,40 +2633,6 @@ for (const supportedVersion of versionsUnderTest) {
         })
       })
 
-      it('clicks carry the stateId of the window they click, not the last one synced', function (done) {
-        if (!bot.supportFeature('stateIdUsed')) {
-          this.skip()
-          return
-        }
-        const clicks = []
-        server.on('playerJoin', (client) => {
-          client.write('login', bot.test.generateLoginPacket())
-          client.on('window_click', (packet) => {
-            clicks.push(packet)
-            if (clicks.length < 2) return
-            try {
-              assert.deepStrictEqual(clicks.map(c => [c.windowId, c.stateId]), [[1, 5], [0, 9]])
-              done()
-            } catch (err) {
-              done(err)
-            }
-          })
-
-          bot.once('windowOpen', async () => {
-            // a player-inventory sync while the container is open
-            client.write('set_slot', { windowId: 0, stateId: 9, slot: 36, item: Item.toNotch(null) })
-            await sleep(50)
-            await bot.clickWindow(0, 0, 0)
-            bot.closeWindow(bot.currentWindow)
-            await sleep(50)
-            await bot.clickWindow(36, 0, 0)
-          })
-
-          client.write('open_window', openWindowPacket(1, chestData))
-          client.write('window_items', { ...windowItemsPacket(1, emptyItems(chestData.slots)), stateId: 5 })
-        })
-      })
-
       it('drops the open window on a re-login without telling the server', (done) => {
         // Vanilla sends no close_window for the window open before a re-login
         server.on('playerJoin', (client) => {
@@ -2735,6 +2674,40 @@ for (const supportedVersion of versionsUnderTest) {
 
           client.write('open_window', openWindowPacket(1, chestData))
           client.write('window_items', windowItemsPacket(1, emptyItems(chestData.slots)))
+        })
+      })
+
+      it('clicks carry the stateId of the window they click, not the last one synced', function (done) {
+        if (!bot.supportFeature('stateIdUsed')) {
+          this.skip()
+          return
+        }
+        const clicks = []
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.on('window_click', (packet) => {
+            clicks.push(packet)
+            if (clicks.length < 2) return
+            try {
+              assert.deepStrictEqual(clicks.map(c => [c.windowId, c.stateId]), [[1, 5], [0, 9]])
+              done()
+            } catch (err) {
+              done(err)
+            }
+          })
+
+          bot.once('windowOpen', async () => {
+            // a player-inventory sync while the container is open
+            client.write('set_slot', { windowId: 0, stateId: 9, slot: 36, item: Item.toNotch(null) })
+            await sleep(50)
+            await bot.clickWindow(0, 0, 0)
+            bot.closeWindow(bot.currentWindow)
+            await sleep(50)
+            await bot.clickWindow(36, 0, 0)
+          })
+
+          client.write('open_window', openWindowPacket(1, chestData))
+          client.write('window_items', { ...windowItemsPacket(1, emptyItems(chestData.slots)), stateId: 5 })
         })
       })
     })

@@ -268,6 +268,36 @@ function inject (bot, { hideErrors }) {
     return eye.plus(toMiddle.scaled(entry))
   }
 
+  // 26.1 folded interact_at into interact: one use_entity carries the hit point. Earlier versions send
+  // interact_at, then interact. The server applies the packet's sneak flag as the player's shift state.
+  const interactEntity = bot.supportFeature('useEntityHasLocation')
+    ? (entity, hit) => {
+        bot._client.write('use_entity', {
+          target: entity.id,
+          hand: 0, // main hand
+          location: hit,
+          sneaking: bot.getControlState('sneak')
+        })
+      }
+    : (entity, hit) => {
+        const sneaking = bot.getControlState('sneak')
+        bot._client.write('use_entity', {
+          target: entity.id,
+          mouse: 2, // interact at
+          x: hit.x,
+          y: hit.y,
+          z: hit.z,
+          hand: 0, // main hand
+          sneaking
+        })
+        bot._client.write('use_entity', {
+          target: entity.id,
+          mouse: 0, // interact
+          hand: 0, // main hand
+          sneaking
+        })
+      }
+
   async function activateEntity (entity) {
     const hit = hitVector(entity)
     await bot.lookAt(entity.position.plus(hit), false)
@@ -285,42 +315,6 @@ function inject (bot, { hideErrors }) {
 
   function mount (entity) {
     interactEntity(entity, hitVector(entity))
-  }
-
-  // 26.1+ has a single interact packet carrying the hit point; earlier
-  // versions send interact_at (hit point relative to the entity) followed by
-  // interact, and both must carry the same sneak state
-  const useEntityFields = bot.registry.protocol.play.toServer.types.packet_use_entity[1]
-  const useEntityHasLocation = useEntityFields.some(field => field.name === 'location')
-  // 26.1 declares the hand as a mapper; every earlier version takes the id.
-  const handType = useEntityFields.find(field => field.name === 'hand')?.type
-  const mainHand = Array.isArray(handType) && handType[0] === 'mapper' ? 'main_hand' : 0
-  function interactEntity (entity, hit) {
-    const sneaking = bot.getControlState('sneak')
-    if (useEntityHasLocation) {
-      bot._client.write('use_entity', {
-        target: entity.id,
-        hand: mainHand,
-        location: hit,
-        sneaking
-      })
-      return
-    }
-    bot._client.write('use_entity', {
-      target: entity.id,
-      mouse: 2, // interact at
-      x: hit.x,
-      y: hit.y,
-      z: hit.z,
-      hand: mainHand,
-      sneaking
-    })
-    bot._client.write('use_entity', {
-      target: entity.id,
-      mouse: 0, // interact
-      hand: mainHand,
-      sneaking
-    })
   }
 
   async function transfer (options) {
