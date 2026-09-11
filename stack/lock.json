@@ -4,8 +4,8 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "9025cb4e1e1256e5808e93edc628a3094a271dc1",
-      "tip": "d043d40de7026b1de8ccfe5c3c2dd113288287da",
-      "tree": "8473a761e7bed29cd5d486fa6f79238c2a6a72ab",
+      "tip": "d44c276468bb43acb0821278b548e25084d464a5",
+      "tree": "55dcbd058722787f0066aa0a7d2b2f3a3d961da0",
       "prs": [
         {
           "number": 1266,
@@ -52,7 +52,7 @@
         {
           "number": 1284,
           "title": "Fix pc/26.1 client_command actionId: plain varint, not a mapper",
-          "head": "0d2e58e8dcf8d444cef02466452afa48f0b9e764",
+          "head": "2c7d1074d3feb595fc6988cb78e5c235b4d00798",
           "mergeBase": "8c6525b6cc0df0e218d01824d724017222e9b05e",
           "status": "applied"
         }
@@ -220,8 +220,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "29a3cb9534615eb169f8c9039dacbb74c1f00f03",
-      "tree": "91a699bb6705302f1c8580c1e944cf85a4d51d99",
+      "tip": "deb31db845fdde896bb4fa5ff15d5d920311512c",
+      "tree": "405d4fcf6f2c271382210f91d02e97517ac852d9",
       "prs": [
         {
           "number": 4021,
@@ -267,8 +267,8 @@
         },
         {
           "number": 4065,
-          "title": "settings: send Client Information when the vanilla client does",
-          "head": "f079bbbb0ed43b2c3ebfe7f09be1fe6330124393",
+          "title": "Send the client brand and Client Information when the vanilla client does",
+          "head": "314b8a5280f76034f54fdc3bb49a207a82e2cced",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
           "status": "applied"
         },
@@ -288,7 +288,7 @@
         },
         {
           "number": 4069,
-          "title": "fix: apply a server-sent held slot without echoing it",
+          "title": "fix: send held_item_slot only when the slot differs from the slot the server holds",
           "head": "d21e8324741b3663eed691dfc4495a596a9c9653",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
           "status": "applied"
@@ -297,13 +297,6 @@
           "number": 4071,
           "title": "fix: reset teams and scoreboards on every login",
           "head": "07248e2cbb250529cc6d3cffeb496c5e43b95820",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "applied"
-        },
-        {
-          "number": 4072,
-          "title": "fix: track the container stateId per window",
-          "head": "f71c7bf55bf84d3ad929c4ed5762e50d2861ce20",
           "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
           "status": "applied"
         },
@@ -336,13 +329,6 @@
           "status": "applied"
         },
         {
-          "number": 4082,
-          "title": "game: send the client brand once per connection, as the vanilla client does",
-          "head": "b9d9f1642467d36ac0631004702bcc6f70407254",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "applied"
-        },
-        {
           "number": 4083,
           "title": "Track the abilities the server grants",
           "head": "caf2555bfbc6be3ac1bf074f4ecbda36978fbc51",
@@ -351,10 +337,11 @@
         },
         {
           "number": 4085,
-          "title": "Share one pre-incremented block prediction sequence across dig, use_item_on and use_item",
-          "head": "4d203cbf7c79676400f734a7d9d8d50a6e38b63a",
+          "title": "use_item and use_item_on like the vanilla client: shared prediction sequence, cursor on the clicked face, no empty-hand use, swing after the packet",
+          "head": "fb1d35fd08b54119107b63c1541a7d2430094205",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping both sides of each add/add conflict: HEAD's `held_item_slot` and `scoreboard reset on login` describes remain fully intact, with the PR's `generic place` and `\n... (268 more bytes cut) (test/internalTest.js; 12 turns)"
         },
         {
           "number": 4086,
@@ -379,31 +366,11 @@
         },
         {
           "number": 4089,
-          "title": "activateEntity: send the vanilla interact pair with the real sneak state and hit point",
-          "head": "5c912cd25018530584018e2465258ceddd1b7b83",
+          "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
+          "head": "8ccbffeea632aa63a0857fb69a9805f5819899ce",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
-        },
-        {
-          "number": 4090,
-          "title": "Default activateBlock's cursor to the clicked face and skip activateItem with an empty hand",
-          "head": "43c28f1eb52cdc855e27fc40f8739e876e3eefe1",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "applied"
-        },
-        {
-          "number": 4091,
-          "title": "Swing the arm after use_item_on when placing, not before",
-          "head": "8b4b1476c87f86398a2ca12703084586946b7ca7",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
-        },
-        {
-          "number": 4092,
-          "title": "Throw from bot.attack for targets the server kicks for",
-          "head": "f975031dc6bffcbd2d47afb312cc0a9245a38fb8",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "applied"
+          "status": "resolved-ai",
+          "note": "Resolved by keeping both sides' inserted describes — stack's `block actions` + `abilities`, then the PR's `entity interaction` — reusing the shared closing tail for the last block. (test/internalTest.js; 14 turns)"
         },
         {
           "number": 4093,
@@ -415,16 +382,10 @@
         {
           "number": 4094,
           "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
-          "head": "53a2bf0821fac569b2b063967f10a79394c98cbb",
+          "head": "36e6265f3b23a6fac255443b9041e1090c584cc8",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
-        },
-        {
-          "number": 4095,
-          "title": "Right-click entities through one path, so useOn and mount send the vanilla pair",
-          "head": "a35c1ff1a0da8d668289e03f5312f4486e4f5919",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved `test/internalTest.js` by keeping all three stack-added blocks (`placeBlock`, `held_item_slot`, `scoreboard reset on login`) verbatim and inserting the PR's new `describe('digging', ...)` tes\n... (139 more bytes cut) (test/internalTest.js; 19 turns)"
         },
         {
           "number": 4099,
@@ -438,7 +399,8 @@
           "title": "Make the named scoreboard display slots non-enumerable",
           "head": "2938fa213d44163d4b484d6a369762f5af30cb75",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "applied"
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping both insertions at the same spot: the stack's `describe('teams', ...)` block followed by the PR's new `describe('scoreboard', ...)` block, both before `describ\n... (59 more bytes cut) (test/internalTest.js; 10 turns)"
         },
         {
           "number": 4101,
@@ -456,8 +418,8 @@
         },
         {
           "number": 4103,
-          "title": "Close the open window on respawn like vanilla",
-          "head": "4253118177e353ffb43e4c021fbe74146f774158",
+          "title": "Window state across close, re-login and respawn: stateId per window, close_window on respawn, closeWindow(null)",
+          "head": "5d4dab47f3bfe1f414222cd6c1d39b8b234c6107",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
           "status": "resolved-rerere"
         },
@@ -465,13 +427,6 @@
           "number": 4104,
           "title": "Accept play-phase resource packs when no resourcePack listener answers them",
           "head": "217e7f928f87e973a16115c5047a6586c783b2ed",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
-        },
-        {
-          "number": 4106,
-          "title": "closeWindow(null) is a no-op instead of throwing",
-          "head": "9a0d5d64b2e36718b197481033f35f29add87502",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
           "status": "resolved-rerere"
         },
