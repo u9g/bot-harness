@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "9025cb4e1e1256e5808e93edc628a3094a271dc1",
-      "tip": "f5419aabc93a2ac0eb71ed1f20485c73f3062570",
+      "tip": "d043d40de7026b1de8ccfe5c3c2dd113288287da",
       "tree": "8473a761e7bed29cd5d486fa6f79238c2a6a72ab",
       "prs": [
         {
@@ -220,7 +220,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-      "tip": "841f01edeb4ffe0a1aa7992c9948d596d234d513",
+      "tip": "29a3cb9534615eb169f8c9039dacbb74c1f00f03",
       "tree": "91a699bb6705302f1c8580c1e944cf85a4d51d99",
       "prs": [
         {
