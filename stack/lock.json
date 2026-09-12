@@ -4,8 +4,8 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "0c9f59011af7082e51b5fec97abe5a36f9e12ee6",
-      "tip": "0a83c4b8812056206e8fafb375dd07b9b61113a1",
-      "tree": "695ef273173a6df7d6a8ef770869983ac9d10d65",
+      "tip": "19468563c53153a4dfeb00d6c98083e3f2acb155",
+      "tree": "db02eb51374ab64396883782ccf798db1ff526de",
       "prs": [
         {
           "number": 1267,
@@ -48,6 +48,13 @@
           "head": "2c7d1074d3feb595fc6988cb78e5c235b4d00798",
           "mergeBase": "8c6525b6cc0df0e218d01824d724017222e9b05e",
           "status": "applied"
+        },
+        {
+          "number": 1292,
+          "title": "Revert the 1.21.6 enum mappers whose ordinals never moved",
+          "head": "8f96413d2be41112d22f4c92c167ace72ee98474",
+          "mergeBase": "0c9f59011af7082e51b5fec97abe5a36f9e12ee6",
+          "status": "applied"
         }
       ]
     },
@@ -55,7 +62,7 @@
       "repo": "ProtoDef-io/ProtoDef",
       "base": "master",
       "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
-      "tip": "b3b972bceedb3953237d464fbd49ee1715715e8e",
+      "tip": "bd3eb59d0e03f2e1c478799e823f7c76593d7887",
       "tree": "b76e64ce2cde89b66f654ee6be0d6a7d96045cfb",
       "prs": [
         {
@@ -79,7 +86,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "81327b995b90d6ab6ffc37ada3a2d95e0691d339",
+      "tip": "33b41fd2ff9383fae525dd15c75147e1c5fe00c6",
       "tree": "f44fd9a555a31bfdf85ca76dfa0f37cdafff364b",
       "prs": [
         {
@@ -94,8 +101,7 @@
           "title": "FullPacketParser: emit partialReadError with the chunk it could not read",
           "head": "0087395b45bec014d0f85e695905891809f5604b",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-          "status": "resolved-ai",
-          "note": "Resolved test/misc.js by keeping both additions: the stack's `describe('hash', ...)` block from #177 (with its own closing braces restored) followed by the PR's new `describe('FullPacketParser', ...)`\n... (84 more bytes cut) (test/misc.js; 7 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 179,
@@ -109,8 +115,7 @@
           "title": "Serializer: name the packet in write errors from a compiled protocol",
           "head": "d31ac124ee75e203797bc118af6b5e34df2f57ad",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-          "status": "resolved-ai",
-          "note": "Resolved test/misc.js as a union of both sides: the require line now destructures `{ ProtoDef, FullPacketParser, Serializer }`, and the stack's `describe('hash')` and `describe('FullPacketParser')` bl\n... (181 more bytes cut) (test/misc.js; 6 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
@@ -169,7 +174,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "23708c86f5973d8d0d77eefb868945dc944def17",
+      "tip": "de4e226eb519060a2581a82f56900a01dde471fb",
       "tree": "be0ea36c108ac620867eda4d5c8a50c1ecc24220",
       "prs": [
         {
@@ -222,8 +227,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
-      "tip": "7d6157564150996873f7497bd798453f1de129ee",
-      "tree": "3948a4daa2325241c4c776c6ef687ed24cf68d62",
+      "tip": "357aa4edf38ed447c0641255b6a1ae1cf3b54738",
+      "tree": "90a5adc941e8db82e5d1bb6cbd76ec54d57d7120",
       "prs": [
         {
           "number": 4021,
@@ -262,10 +267,11 @@
         },
         {
           "number": 4065,
-          "title": "Send the client brand and Client Information when the vanilla client does",
-          "head": "314b8a5280f76034f54fdc3bb49a207a82e2cced",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "applied"
+          "title": "Send Client Information once, when the vanilla client does",
+          "head": "b59072e9559a766b3ebe5de714eec4b517750adc",
+          "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping both insertions at the shared anchor point: the stack's `describe('player_loaded')` block (from #4064) stays intact, and the PR's new `describe('settings')` bl\n... (128 more bytes cut) (test/internalTest.js; 10 turns)"
         },
         {
           "number": 4067,
@@ -349,7 +355,8 @@
           "title": "Report resource packs as ACCEPTED, DOWNLOADED, SUCCESSFULLY_LOADED and deny once",
           "head": "dc290378d252dda9026c5183e2dd2431a58e1ae5",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved `test/internalTest.js` by keeping both sides: the PR's new `describe('resource pack')` block (vanilla accept status sequence and single-DECLINED deny tests, using the already-merged `bot.test\n... (233 more bytes cut) (test/internalTest.js; 10 turns)"
         },
         {
           "number": 4088,
@@ -361,9 +368,10 @@
         {
           "number": 4089,
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
-          "head": "b4f2603f41faf25ee4156dbc9fe0d20250c56112",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "head": "ba08fc075d213babf4487e10c3becb7614ab0645",
+          "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping both sides' additions at the same insertion point: the stack's `describe('abilities', ...)` block (from #4083, verbatim) followed by the PR's new `describe('en\n... (149 more bytes cut) (test/internalTest.js; 14 turns)"
         },
         {
           "number": 4093,
@@ -483,7 +491,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "d95646a6bbcfffce9a4d30dbb7bab76ba0dee98e",
+      "tip": "7b1c53387f7676158abe267a9dd94a1c0dd7994d",
       "tree": "b9be260a680586a229f3555441f01d2f8766faaa",
       "prs": [
         {
@@ -548,7 +556,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "c5c1d83bf1ba2ba38cb5114ef830f8f4db3e5c2d",
+      "tip": "045c9e4c5be6d29f73c47786d59e51f2daadd720",
       "tree": "c37e434ce8cec977c65536805e7519654d54f151",
       "prs": [
         {
