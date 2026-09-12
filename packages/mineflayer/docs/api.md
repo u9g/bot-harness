@@ -1817,7 +1817,7 @@ async function wait () {
 
 #### bot.setSettings(options)
 
-See the `bot.settings` property. Sends the current settings to the server as a Client Information packet immediately. The initial send happens automatically during login (configuration phase on 1.20.2+, after login on older versions), like the vanilla client.
+See the `bot.settings` property.
 
 #### bot.loadPlugin(plugin)
 

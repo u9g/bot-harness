@@ -40,7 +40,8 @@ function inject (bot, options) {
     assert.ok(handBits != null, `invalid main hand: ${bot.settings.mainHand}`)
 
     // skin
-    // The cape bit is inverted and the server ignores it.
+    // cape is inverted, not used at all (legacy?)
+    // bot.settings.showCape = !!bot.settings.showCape
     const skinParts = bot.settings.skinParts.showCape << 0 |
           bot.settings.skinParts.showJacket << 1 |
           bot.settings.skinParts.showLeftSleeve << 2 |
@@ -50,7 +51,7 @@ function inject (bot, options) {
           bot.settings.skinParts.showHat << 6
 
     return {
-      locale: bot.settings.locale || 'en_us',
+      locale: bot.settings.locale || 'en_US',
       viewDistance: viewDistanceBits,
       chatFlags: chatBits,
       chatColors: bot.settings.colorsEnabled,
@@ -91,17 +92,14 @@ function inject (bot, options) {
       : options.skinParts,
     mainHand: options.mainHand || 'right',
     enableTextFiltering: options.enableTextFiltering || false,
-    enableServerListing: options.enableServerListing ?? true,
-    particleStatus: 'all',
-    locale: options.locale || 'en_us'
+    enableServerListing: options.enableServerListing || true,
+    particleStatus: 'all'
   }
 
-  // options.clientSettings must equal the encoded bot.settings: node-minecraft-protocol
-  // sends it as Client Information during the configuration phase (1.20.2+).
+  // On 1.20.2+ node-minecraft-protocol sends Client Information during the configuration
+  // phase; give it the bot's settings so the server is never told two different things.
   options.clientSettings = options.clientSettings ?? clientInformation()
 
-  // Client Information must reach the server exactly once before bot.setSettings is
-  // called: via options.clientSettings on 1.20.2+, via this write on older versions.
   bot._client.on('login', () => {
     if (!bot.supportFeature('hasConfigurationState')) setSettings({})
   })
