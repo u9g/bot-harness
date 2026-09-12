@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "0c9f59011af7082e51b5fec97abe5a36f9e12ee6",
-      "tip": "1c611cdb3e786e3863c3e197938e40fd22e7e306",
+      "tip": "6133ee4036a1326d0c70a7694f89a3ec0bc147d7",
       "tree": "695ef273173a6df7d6a8ef770869983ac9d10d65",
       "prs": [
         {
@@ -55,13 +55,13 @@
       "repo": "ProtoDef-io/ProtoDef",
       "base": "master",
       "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
-      "tip": "b1d2065d7d1a0566332f7dbd731330765e90707b",
-      "tree": "648e591b6f4d638861def62feb39d45c2e7f3175",
+      "tip": "68dce81cd345936a60328c24fb6581fa818b373e",
+      "tree": "2df16c81eaca7253f2515309153ede257f4fb330",
       "prs": [
         {
           "number": 65,
           "title": "Add the hash datatype",
-          "head": "647e754b8147b40dd05e947801e00ef3f38f704f",
+          "head": "c6e9efee15a278d8d34039756b84f8eb469b5256",
           "mergeBase": "8e07785e94626882fa3333184bb366e3f6625356",
           "status": "applied"
         }
@@ -79,20 +79,13 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "bb8e08b71c3c8495f333114555419e1f2e628c99",
-      "tree": "18a84fe2582f29bb067a782d9f6e204c30110953",
+      "tip": "9030ea7bf50217c387088193a251fa1eded82e0a",
+      "tree": "ec925c8662a160229a93431f895e95774c144f27",
       "prs": [
-        {
-          "number": 162,
-          "title": "Add check for fields not existing when writing container",
-          "head": "d567055742d303cefcf9831996fe6d864c34689d",
-          "mergeBase": "67b411aacbf9ad2ccf0aaeac0bb4d9d568b568b3",
-          "status": "applied"
-        },
         {
           "number": 177,
           "title": "Add the hash datatype",
-          "head": "5dffdf8f79fe1544d0a2a896fbffea163d8213bc",
+          "head": "3d001d3344e464dc4d0f757e454017cbd6ed14f8",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
           "status": "applied"
         },
@@ -101,7 +94,8 @@
           "title": "FullPacketParser: emit partialReadError with the chunk it could not read",
           "head": "0087395b45bec014d0f85e695905891809f5604b",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved test/misc.js by keeping both appended blocks: the stack's `describe('hash', ...)` suite (PR #177) closes fully, followed by the PR's new `describe('FullPacketParser', ...)` suite using the me\n... (152 more bytes cut) (test/misc.js; 6 turns)"
         },
         {
           "number": 179,
@@ -115,7 +109,8 @@
           "title": "Serializer: name the packet in write errors from a compiled protocol",
           "head": "d31ac124ee75e203797bc118af6b5e34df2f57ad",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Merged the require line to `const { ProtoDef, FullPacketParser, Serializer } = require('../')` and kept both the stack's `hash`/`FullPacketParser` describe blocks and the PR's new `Serializer` describ\n... (39 more bytes cut) (test/misc.js; 11 turns)"
         }
       ]
     },
@@ -174,7 +169,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "c320e72f21c1afa3c8f93570f030a6745ab203a5",
+      "tip": "296b60bd3120f7288a98c104892205e87341302e",
       "tree": "be0ea36c108ac620867eda4d5c8a50c1ecc24220",
       "prs": [
         {
@@ -226,9 +221,9 @@
     "mineflayer": {
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
-      "baseSha": "cdfb54df6d4140106dfcb9b12b4b05da48813bf3",
-      "tip": "d6ef79b16a6f14e8da0a8fba34a5ca15feee7460",
-      "tree": "61ac569ac3b16a8724b0c10d0b70754615d6ff33",
+      "baseSha": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
+      "tip": "151b96560321034a1f6bc3254fe1bc273ac7727c",
+      "tree": "3948a4daa2325241c4c776c6ef687ed24cf68d62",
       "prs": [
         {
           "number": 4021,
@@ -242,13 +237,6 @@
           "title": "inventory: claim clicked slots by hash on 1.21.5+",
           "head": "63bada466843c3eb701827518a6918ddc4a98afd",
           "mergeBase": "c07e457f79fd6faef17b195a47b798f27031e867",
-          "status": "applied"
-        },
-        {
-          "number": 4059,
-          "title": "fix: clear a chest's lid open count when its block is replaced; make useChests await its fill commands",
-          "head": "60c76e97093a4975da0ea8f7d4650d8c238d5137",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
           "status": "applied"
         },
         {
@@ -338,9 +326,9 @@
         {
           "number": 4083,
           "title": "Track the abilities the server grants",
-          "head": "caf2555bfbc6be3ac1bf074f4ecbda36978fbc51",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "resolved-rerere"
+          "head": "05c09e10efacceb398c5767721ab93ada83aaa8a",
+          "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
+          "status": "applied"
         },
         {
           "number": 4085,
@@ -373,9 +361,10 @@
         {
           "number": 4089,
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
-          "head": "8ccbffeea632aa63a0857fb69a9805f5819899ce",
+          "head": "b4f2603f41faf25ee4156dbc9fe0d20250c56112",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "resolved-ai",
+          "note": "Resolved test/internalTest.js by keeping both sides: the stack's `block actions` and `abilities` describes (closed with their own `})`/`})`/`})`) followed by the PR's new `entity interaction` describe\n... (151 more bytes cut) (test/internalTest.js; 16 turns)"
         },
         {
           "number": 4093,
@@ -495,7 +484,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "db1550595363046a0020743c63b1a71226c83f42",
+      "tip": "576cc9fecb059e6aed97380c1c598898c6cc7dd3",
       "tree": "b9be260a680586a229f3555441f01d2f8766faaa",
       "prs": [
         {
@@ -560,7 +549,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "5f700cd0639662bba37e1628e568f4ba89a21062",
+      "tip": "7f71e6fb256979a671dba524b734ad6759318b09",
       "tree": "c37e434ce8cec977c65536805e7519654d54f151",
       "prs": [
         {
@@ -589,8 +578,7 @@
           "title": "Add viewer.waitForReady() for a fully textured first frame",
           "head": "af9075bb69c4a8d895ea8710898c56cf25db2f42",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai",
-          "note": "Resolved `viewer/lib/worldrenderer.js` by taking the PR's host-based structure (`host.createWorker()`/`onMessage` → `onWorkerMessage`, promise-based `texturesLoaded` feeding the new `waitForReady()`) \n... (274 more bytes cut) (viewer/lib/worldrenderer.js; 11 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 506,
@@ -611,16 +599,14 @@
           "title": "Decode host images without holding the event loop",
           "head": "3bbee612580004597f382bfac18b520e4021dcda",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai",
-          "note": "Resolved both conflicts in `viewer/lib/worldrenderer.js` by keeping the stack side: the vec3 `animation` attribute (per-vertex framestep from #503, which also removed the `tileHeight` uniform the PR's\n... (292 more bytes cut) (viewer/lib/worldrenderer.js; 8 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 511,
           "title": "Parse the block states in the mesher, not on the calling thread",
           "head": "05bd6ecb5578ecc72ac45abc52c819f8e59f2422",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai",
-          "note": "Resolved viewer/lib/worldrenderer.js as the union of both sides: kept the stack's per-vertex `animation` vec3 attribute and `texturesLoaded` promise wrapper (the PR's promise-style `loadTexture(this.h\n... (297 more bytes cut) (viewer/lib/worldrenderer.js; 9 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 513,
