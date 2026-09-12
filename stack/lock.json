@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "0c9f59011af7082e51b5fec97abe5a36f9e12ee6",
-      "tip": "6133ee4036a1326d0c70a7694f89a3ec0bc147d7",
+      "tip": "0a83c4b8812056206e8fafb375dd07b9b61113a1",
       "tree": "695ef273173a6df7d6a8ef770869983ac9d10d65",
       "prs": [
         {
@@ -55,13 +55,13 @@
       "repo": "ProtoDef-io/ProtoDef",
       "base": "master",
       "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
-      "tip": "68dce81cd345936a60328c24fb6581fa818b373e",
-      "tree": "2df16c81eaca7253f2515309153ede257f4fb330",
+      "tip": "b3b972bceedb3953237d464fbd49ee1715715e8e",
+      "tree": "b76e64ce2cde89b66f654ee6be0d6a7d96045cfb",
       "prs": [
         {
           "number": 65,
           "title": "Add the hash datatype",
-          "head": "c6e9efee15a278d8d34039756b84f8eb469b5256",
+          "head": "a2b1cd2d84488012b7949fbe578d3781cc3329a4",
           "mergeBase": "8e07785e94626882fa3333184bb366e3f6625356",
           "status": "applied"
         }
@@ -79,13 +79,13 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "9030ea7bf50217c387088193a251fa1eded82e0a",
-      "tree": "ec925c8662a160229a93431f895e95774c144f27",
+      "tip": "81327b995b90d6ab6ffc37ada3a2d95e0691d339",
+      "tree": "f44fd9a555a31bfdf85ca76dfa0f37cdafff364b",
       "prs": [
         {
           "number": 177,
           "title": "Add the hash datatype",
-          "head": "3d001d3344e464dc4d0f757e454017cbd6ed14f8",
+          "head": "dde6ce755124e8f42b4fc1e53ce2d84c73acdb09",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
           "status": "applied"
         },
@@ -95,7 +95,7 @@
           "head": "0087395b45bec014d0f85e695905891809f5604b",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
           "status": "resolved-ai",
-          "note": "Resolved test/misc.js by keeping both appended blocks: the stack's `describe('hash', ...)` suite (PR #177) closes fully, followed by the PR's new `describe('FullPacketParser', ...)` suite using the me\n... (152 more bytes cut) (test/misc.js; 6 turns)"
+          "note": "Resolved test/misc.js by keeping both additions: the stack's `describe('hash', ...)` block from #177 (with its own closing braces restored) followed by the PR's new `describe('FullPacketParser', ...)`\n... (84 more bytes cut) (test/misc.js; 7 turns)"
         },
         {
           "number": 179,
@@ -110,7 +110,7 @@
           "head": "d31ac124ee75e203797bc118af6b5e34df2f57ad",
           "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
           "status": "resolved-ai",
-          "note": "Merged the require line to `const { ProtoDef, FullPacketParser, Serializer } = require('../')` and kept both the stack's `hash`/`FullPacketParser` describe blocks and the PR's new `Serializer` describ\n... (39 more bytes cut) (test/misc.js; 11 turns)"
+          "note": "Resolved test/misc.js as a union of both sides: the require line now destructures `{ ProtoDef, FullPacketParser, Serializer }`, and the stack's `describe('hash')` and `describe('FullPacketParser')` bl\n... (181 more bytes cut) (test/misc.js; 6 turns)"
         }
       ]
     },
@@ -169,7 +169,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "296b60bd3120f7288a98c104892205e87341302e",
+      "tip": "23708c86f5973d8d0d77eefb868945dc944def17",
       "tree": "be0ea36c108ac620867eda4d5c8a50c1ecc24220",
       "prs": [
         {
@@ -222,7 +222,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
-      "tip": "151b96560321034a1f6bc3254fe1bc273ac7727c",
+      "tip": "7d6157564150996873f7497bd798453f1de129ee",
       "tree": "3948a4daa2325241c4c776c6ef687ed24cf68d62",
       "prs": [
         {
@@ -363,8 +363,7 @@
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
           "head": "b4f2603f41faf25ee4156dbc9fe0d20250c56112",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping both sides: the stack's `block actions` and `abilities` describes (closed with their own `})`/`})`/`})`) followed by the PR's new `entity interaction` describe\n... (151 more bytes cut) (test/internalTest.js; 16 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4093,
@@ -484,7 +483,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "576cc9fecb059e6aed97380c1c598898c6cc7dd3",
+      "tip": "d95646a6bbcfffce9a4d30dbb7bab76ba0dee98e",
       "tree": "b9be260a680586a229f3555441f01d2f8766faaa",
       "prs": [
         {
@@ -549,7 +548,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "7f71e6fb256979a671dba524b734ad6759318b09",
+      "tip": "c5c1d83bf1ba2ba38cb5114ef830f8f4db3e5c2d",
       "tree": "c37e434ce8cec977c65536805e7519654d54f151",
       "prs": [
         {
