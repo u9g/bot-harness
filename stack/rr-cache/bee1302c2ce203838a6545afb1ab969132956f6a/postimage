@@ -15,10 +15,6 @@ class WorldRenderer {
     this.active = false
     this.version = undefined
     this.assetsVersion = undefined
-    // World Y bounds, fetched per version in setVersion. Defaults match pre-1.18.
-    this.minY = 0
-    this.worldHeight = 256
-    this.boundsReady = Promise.resolve()
     this.scene = scene
     this.loadedChunks = {}
     this.sectionsOutstanding = new Set()
@@ -93,14 +89,6 @@ class WorldRenderer {
   setVersion (version, assetsVersion = version) {
     this.version = version
     this.assetsVersion = assetsVersion
-    this.boundsReady = new Promise(resolve => {
-      loadJSON('worldBounds.json', (bounds) => {
-        const { minY = 0, worldHeight = 256 } = bounds[version] ?? {}
-        this.minY = minY
-        this.worldHeight = worldHeight
-        resolve()
-      })
-    })
     this.resetWorld()
     this.active = true
     for (const worker of this.workers) {
@@ -142,18 +130,14 @@ class WorldRenderer {
     for (const worker of this.workers) {
       worker.postMessage({ type: 'chunk', x, z, chunk })
     }
-    // The worker cannot mesh anything until blockStates lands, so waiting on the
-    // bounds fetch here costs no rendering latency.
-    this.boundsReady.then(() => {
-      for (let y = minY; y < minY + worldHeight; y += 16) {
-        const loc = new Vec3(x, y, z)
-        this.setSectionDirty(loc)
-        this.setSectionDirty(loc.offset(-16, 0, 0))
-        this.setSectionDirty(loc.offset(16, 0, 0))
-        this.setSectionDirty(loc.offset(0, 0, -16))
-        this.setSectionDirty(loc.offset(0, 0, 16))
-      }
-    })
+    for (let y = minY; y < minY + worldHeight; y += 16) {
+      const loc = new Vec3(x, y, z)
+      this.setSectionDirty(loc)
+      this.setSectionDirty(loc.offset(-16, 0, 0))
+      this.setSectionDirty(loc.offset(16, 0, 0))
+      this.setSectionDirty(loc.offset(0, 0, -16))
+      this.setSectionDirty(loc.offset(0, 0, 16))
+    }
   }
 
   removeColumn (x, z) {
@@ -162,18 +146,16 @@ class WorldRenderer {
     for (const worker of this.workers) {
       worker.postMessage({ type: 'unloadChunk', x, z })
     }
-    this.boundsReady.then(() => {
-      for (let y = minY; y < minY + worldHeight; y += 16) {
-        this.setSectionDirty(new Vec3(x, y, z), false)
-        const key = `${x},${y},${z}`
-        const mesh = this.sectionMeshs[key]
-        if (mesh) {
-          this.scene.remove(mesh)
-          dispose3(mesh)
-        }
-        delete this.sectionMeshs[key]
+    for (let y = minY; y < minY + worldHeight; y += 16) {
+      this.setSectionDirty(new Vec3(x, y, z), false)
+      const key = `${x},${y},${z}`
+      const mesh = this.sectionMeshs[key]
+      if (mesh) {
+        this.scene.remove(mesh)
+        dispose3(mesh)
       }
-    })
+      delete this.sectionMeshs[key]
+    }
   }
 
   setBlockStateId (pos, stateId) {
