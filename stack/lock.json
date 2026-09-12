@@ -181,7 +181,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "f24d0f990d37ecdd3f44cc143e0617bb43154d9d",
+      "tip": "9c6662617fba01bef4f2b4dae43afab5eb5a8146",
       "tree": "be0ea36c108ac620867eda4d5c8a50c1ecc24220",
       "prs": [
         {
@@ -234,7 +234,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "cdfb54df6d4140106dfcb9b12b4b05da48813bf3",
-      "tip": "77ce572c6c0c0283c79f2e3077bddfacbe8b161a",
+      "tip": "1c1d488645d8562e7eb76ca27f8cfaf00cd3475e",
       "tree": "61ac569ac3b16a8724b0c10d0b70754615d6ff33",
       "prs": [
         {
@@ -354,8 +354,7 @@
           "title": "use_item and use_item_on like the vanilla client: shared prediction sequence, cursor on the clicked face, no empty-hand use, swing after the packet",
           "head": "fa678c81777cb5584f6fabd4493b4a9716d75d73",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Both conflicts resolved: each was a same-anchor insertion — the stack added `held_item_slot` and `scoreboard reset on login` describes where the PR adds `generic place`, `block prediction sequence` an\n... (322 more bytes cut) (test/internalTest.js; 16 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4086,
@@ -397,8 +396,7 @@
           "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
           "head": "36e6265f3b23a6fac255443b9041e1090c584cc8",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved all three conflicts in `test/internalTest.js`: kept the stack's `placeBlock` describe and added the PR's new `digging` describe before `digTime`; kept the stack's `held_item_slot` describe (P\n... (393 more bytes cut) (test/internalTest.js; 19 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4099,
@@ -461,16 +459,14 @@
           "title": "Read the scoreboard objective title as a chat component",
           "head": "4ec9950e598d1349388e3303dfb74e590e1dc3aa",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved by keeping the stack's three new test describes and inserting the PR's `describe('scoreboard')` block before `describe('activateItem rotation')` in test/internalTest.js. (test/internalTest.js; 11 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4112,
           "title": "scoreboard: read the 1.20.3+ objective and score packets",
           "head": "b5668ef0bc38907c7c4a526b99696639913c2697",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "- **test/internalTest.js**: kept all of the stack's blocks at the insertion point (`scoreboard reset on login`, `block prediction sequence`, `activateBlock rotation`, #4111's `describe('scoreboard')` \n... (272 more bytes cut) (docs/api.md, lib/scoreboard.js, test/internalTest.js; 15 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4114,
@@ -498,8 +494,7 @@
           "title": "Expose the interaction ranges the server sends, and the reach check vanilla makes",
           "head": "e0f82108183ceff1aeb9c8721720b68726d23c23",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved the single conflict in `index.d.ts` by keeping both sides: the stack's `placeFaceStrict: boolean` declaration after `placeBlock`, followed by the PR's four new members (`entityInteractionRang\n... (140 more bytes cut) (index.d.ts; 5 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
@@ -507,7 +502,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "a7def43b68b0d4be2a8deeed362f6e24696ef110",
+      "tip": "a6aefb9a0c5d85ed992c22055bdc190eb7c629e2",
       "tree": "b9be260a680586a229f3555441f01d2f8766faaa",
       "prs": [
         {
@@ -557,16 +552,14 @@
           "title": "createHuman: walkTo and lookAt say so when physics is disabled",
           "head": "c1cc510b8d892d43d0b154de68b7a70db3f8e5df",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "resolved-ai",
-          "note": "Resolved by keeping the stack's synchronous `walkTo`/`startWalk` and setback guards, placing `requirePhysics('walkTo')` at the top of `startWalk` (the PR's async walkTo) so it rejects the returned pro\n... (116 more bytes cut) (lib/human.js, readme.md; 12 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 382,
           "title": "createHuman: bridge over gaps the way a player does",
           "head": "c59be20d646a23fe1be0b14413de944d5edbab19",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "resolved-ai",
-          "note": "Resolved the single conflict in `lib/human.js` by merging the `human` object literal from both sides — `const human = { personality, route: [], walkTo, lookAt, bridgeTo, placeAhead, stop, active: true\n... (260 more bytes cut) (lib/human.js; 9 turns)"
+          "status": "resolved-rerere"
         }
       ]
     },
@@ -574,7 +567,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "e14176c313f3723fad22295ece81378b4aa7119a",
+      "tip": "9ff05ee465b44f126e1515a53bfc85329d383681",
       "tree": "67a3782851556e501407bb0f54dc64b9315b42e1",
       "prs": [
         {
@@ -645,8 +638,7 @@
           "title": "Draw nothing for an invisible entity, like the vanilla client",
           "head": "45f7de5cec3e9db3097b5e95bb43ba16331eb3f8",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-ai",
-          "note": "Resolved by keeping both: `worldView.js` keeps the stack's `playerSkin`/`droppedItemName` helpers and payloads while adding the PR's `INVISIBLE_FLAG`/`isInvisible` and an `entityUpdate` listener that \n... (187 more bytes cut) (viewer/lib/entities.js, viewer/lib/worldView.js; 6 turns)"
+          "status": "resolved-rerere"
         }
       ]
     }
