@@ -310,6 +310,10 @@
       - [bot.acceptResourcePack()](#botacceptresourcepack)
       - [bot.denyResourcePack()](#botdenyresourcepack)
       - [bot.placeBlock(referenceBlock, faceVector)](#botplaceblockreferenceblock-facevector)
+      - [bot.entityInteractionRange()](#botentityinteractionrange)
+      - [bot.blockInteractionRange()](#botblockinteractionrange)
+      - [bot.canInteractWithEntity(entity, buffer)](#botcaninteractwithentityentity-buffer--0)
+      - [bot.canInteractWithBlock(block, buffer)](#botcaninteractwithblockblock-buffer--0)
       - [bot.placeEntity(referenceBlock, faceVector)](#botplaceentityreferenceblock-facevector)
       - [bot.activateBlock(block, direction?: Vec3, cursorPos?: Vec3)](#botactivateblockblock-direction-vec3-cursorpos-vec3)
       - [bot.activateEntity(entity)](#botactivateentityentity)
@@ -680,7 +684,7 @@ Name of the scoreboard.
 
 #### ScoreBoard.title
 
-The title of the scoreboard (does not always equal the name)
+The title of the scoreboard as a [ChatMessage](https://github.com/PrismarineJS/prismarine-chat) (does not always equal the name). Servers send it as a chat component, so `title.toString()` for the plain text and `title.toAnsi()` to keep its colours.
 
 #### ScoreBoard.itemsMap
 
@@ -691,6 +695,9 @@ An object with all items in the scoreboard in it
   dzikoysk: { name: 'dzikoysk', value: 6 }
 }
 ```
+
+Each item also has a `displayName` (a `ChatMessage`): the component the server sent with the score
+on 1.20.3+, otherwise the item's name formatted by its team.
 
 #### ScoreBoard.items
 
@@ -2001,6 +2008,34 @@ It rejects as soon as the server refuses the placement (for example because an e
    indicating which face of the `referenceBlock` to place the block against.
 
 The new block will be placed at `referenceBlock.position.plus(faceVector)`. Rejects immediately if that position is already occupied by a block the new one cannot replace, as defined by the server's `minecraft:replaceable` block tag (air, liquids, fire, snow layers and replaceable plants such as grass or vines; a built-in list is used on servers older than 1.20 that do not send the tag).
+
+The face and the cursor position in the packet are taken from a raycast along the bot's own look,
+the way the vanilla client derives them, so the server sees a hit the bot could have made. When no
+point on the requested face is in view — the side faces of the block you are standing on never are,
+which is why players bridge by sneaking over the edge — the requested face is sent anyway, as
+before. Set `bot.placeFaceStrict = true` (or pass `strictFace: true` to `bot._genericPlace`) to
+reject those instead: servers that validate the hit drop them silently.
+
+#### bot.entityInteractionRange()
+
+The distance the server lets the bot reach entities at, read from the `entity_interaction_range`
+attribute the server sends (1.20.5+) and falling back to vanilla's 3.0. Creative mode adds to it.
+
+#### bot.blockInteractionRange()
+
+The same for blocks: the `block_interaction_range` attribute, or vanilla's 4.5.
+
+#### bot.canInteractWithEntity(entity, buffer = 0)
+
+Whether `entity`'s hitbox is inside `bot.entityInteractionRange() + buffer` of the bot's eye. This
+is the check vanilla makes, and the one the server repeats when an interact arrives, so it answers
+"could a player standing here have clicked that?". Interactions sent from further away are dropped
+without a reply. The server gives itself 3.0 of slack, so `buffer` is the knob for asking which of
+the two questions you mean.
+
+#### bot.canInteractWithBlock(block, buffer = 0)
+
+The same for a block, measured against its own cube.
 
 #### bot.placeEntity(referenceBlock, faceVector)
 

@@ -2947,6 +2947,215 @@ for (const supportedVersion of versionsUnderTest) {
       })
     })
 
+    describe('activateBlock rotation', () => {
+      it('faces the point on the clicked face that the packet reports', async () => {
+        const blockPos = vec3(1, 65, 1)
+        const stoneId = registry.blocksByName.stone.id
+        const chunk = bot.test.buildChunk()
+        for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) chunk.setBlockType(vec3(x, 64, z), stoneId)
+        chunk.setBlockType(blockPos, stoneId)
+        let sent = null
+        await new Promise(resolve => {
+          server.on('playerJoin', async (client) => {
+            client.write('login', bot.test.generateLoginPacket())
+            client.write('map_chunk', generateChunkPacket(chunk))
+            client.write('position', {
+              x: 1.5,
+              y: 65,
+              z: 4.5,
+              dx: 0,
+              dy: 0,
+              dz: 0,
+              yaw: 0,
+              pitch: 0,
+              flags: bot.registry.version['>=']('1.21.3') ? {} : 0,
+              teleportId: 0
+            })
+            client.on('packet', (data, meta) => { if (meta.name === 'block_place') sent = data })
+            await sleep(400)
+            resolve()
+          })
+        })
+
+        // the south face, the one an eye at z = 4.5 can see
+        await bot.activateBlock(bot.blockAt(blockPos), vec3(0, 0, 1))
+        await sleep(200)
+        assert.ok(sent, 'no block_place packet')
+
+        const eye = bot.entity.position.offset(0, bot.entity.eyeHeight, 0)
+        const aim = (point) => {
+          const d = point.minus(eye)
+          return { yaw: Math.atan2(-d.x, -d.z), pitch: Math.atan2(d.y, Math.sqrt(d.x * d.x + d.z * d.z)) }
+        }
+        const hit = aim(blockPos.offset(0.5, 0.5, 1))
+        const middle = aim(blockPos.offset(0.5, 0.5, 0.5))
+        assert.ok(Math.abs(hit.pitch - middle.pitch) > 0.05, 'the two aims must be far enough apart to tell apart')
+        assert.ok(Math.abs(bot.entity.pitch - hit.pitch) < 0.02,
+          `pitch ${bot.entity.pitch} should face the reported hit at ${hit.pitch}, the block's middle is ${middle.pitch}`)
+        assert.ok(Math.abs(bot.entity.yaw - hit.yaw) < 0.02, `yaw ${bot.entity.yaw} should face the reported hit at ${hit.yaw}`)
+      })
+    })
+
+    describe('scoreboard', () => {
+      // An objective title is a plain string before 1.13, a JSON component string up to 1.20.2
+      // and an NBT component after that - and servers build it out of `extra` far more often
+      // than they put the text at the top level.
+      function objectiveTitle (parts) {
+        if (registry.supportFeature('chatPacketsUseNbtComponents')) {
+          return nbt.comp({
+            text: nbt.string(''),
+            extra: nbt.list(nbt.comp(parts.map(part => {
+              const c = { text: nbt.string(part.text) }
+              if (part.color) c.color = nbt.string(part.color)
+              return c
+            })))
+          })
+        }
+        if (registry.version['>=']('1.13')) return JSON.stringify({ text: '', extra: parts })
+        return parts.map(part => part.text).join('')
+      }
+
+      it('reads a component objective title', async () => {
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.write('scoreboard_objective', {
+            name: 'obj',
+            action: 0,
+            displayText: objectiveTitle([{ text: 'Bed', color: 'yellow' }, { text: 'Wars' }]),
+            type: 'integer'
+          })
+          client.write('scoreboard_display_objective', { position: 1, name: 'obj' })
+        })
+
+        const [, scoreboard] = await onceWithCleanup(bot, 'scoreboardPosition', { timeout: 5000 })
+        assert.strictEqual(scoreboard.title.toString(), 'BedWars')
+        assert.strictEqual(bot.scoreboard.sidebar.title.toString(), 'BedWars')
+        assert.strictEqual(bot.scoreboards.obj.title.toString(), 'BedWars')
+      })
+
+      it('reads a component title sent as an objective update', async () => {
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.write('scoreboard_objective', {
+            name: 'obj',
+            action: 0,
+            displayText: objectiveTitle([{ text: 'first' }]),
+            type: 'integer'
+          })
+          setTimeout(() => {
+            client.write('scoreboard_objective', {
+              name: 'obj',
+              action: 2,
+              displayText: objectiveTitle([{ text: 'sec', color: 'red' }, { text: 'ond' }]),
+              type: 'integer'
+            })
+          }, 100)
+        })
+
+        const [scoreboard] = await onceWithCleanup(bot, 'scoreboardTitleChanged', { timeout: 5000 })
+        assert.strictEqual(scoreboard.title.toString(), 'second')
+      })
+    })
+
+    describe('scoreboard', () => {
+      // 1.20.3 dropped the action field from the score packet and moved removal to reset_score.
+      const objectiveFields = registry.protocol?.play?.toClient?.types?.packet_scoreboard_objective?.[1] ?? []
+      const scoreHasAction = (registry.protocol?.play?.toClient?.types?.packet_scoreboard_score?.[1] ?? [])
+        .some(field => field.name === 'action')
+      // 1.8 to 1.12 name the objective's render type; later versions send its index.
+      const objectiveType = objectiveFields.find(f => f.name === 'type')?.type?.[1]?.fields?.[0] === 'string' ? 'integer' : 0
+
+      const addObjective = (client, name, title) => client.write('scoreboard_objective', {
+        name, action: 0, displayText: chatText(title), type: objectiveType
+      })
+      const setScore = (client, objective, entity, value, display) => client.write('scoreboard_score', scoreHasAction
+        ? { itemName: entity, action: 0, scoreName: objective, value }
+        : { itemName: entity, scoreName: objective, value, display_name: display })
+
+      // Every packet the server sends on join lands in one batch, so the events they raise are all
+      // emitted before the first await returns; each test collects them instead of awaiting in turn.
+      function collect (...events) {
+        const seen = []
+        for (const name of events) bot.on(name, (...args) => seen.push([name, ...args]))
+        return seen
+      }
+      // Resolves once the bot has joined and the packets written for it have been handled.
+      function onJoin (write) {
+        return new Promise(resolve => {
+          server.on('playerJoin', (client) => {
+            write(client)
+            sleep(100).then(resolve)
+          })
+        })
+      }
+
+      it('reads the objective title, whatever shape the version sends it in', async () => {
+        const seen = collect('scoreboardCreated', 'scoreboardPosition')
+        await onJoin((client) => {
+          addObjective(client, 'kills', 'Total Kills')
+          client.write('scoreboard_display_objective', { position: 1, name: 'kills' })
+        })
+        const created = seen.find(e => e[0] === 'scoreboardCreated')
+        assert.ok(created, 'no scoreboardCreated')
+        assert.strictEqual(created[1].title.toString(), 'Total Kills')
+        assert.ok(seen.some(e => e[0] === 'scoreboardPosition'), 'no scoreboardPosition')
+        assert.strictEqual(bot.scoreboard.sidebar, bot.scoreboards.kills)
+      })
+
+      it('records a score and drops it again', async () => {
+        const seen = collect('scoreUpdated', 'scoreRemoved')
+        let client
+        await onJoin((c) => {
+          client = c
+          addObjective(c, 'kills', 'Total Kills')
+          setScore(c, 'kills', 'wvffle', 7)
+        })
+        const updated = seen.find(e => e[0] === 'scoreUpdated')
+        assert.ok(updated, 'no scoreUpdated')
+        const [, scoreboard, added] = updated
+        assert.strictEqual(added.value, 7)
+        assert.strictEqual(scoreboard.itemsMap.wvffle, added)
+        assert.strictEqual(added.displayName.toString(), 'wvffle')
+
+        if (scoreHasAction) client.write('scoreboard_score', { itemName: 'wvffle', action: 1, scoreName: 'kills' })
+        else client.write('reset_score', { entity_name: 'wvffle', objective_name: 'kills' })
+        await sleep(100)
+        const removal = seen.find(e => e[0] === 'scoreRemoved')
+        assert.ok(removal, 'no scoreRemoved')
+        assert.strictEqual(removal[2].value, 7)
+        assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle, undefined)
+      })
+
+      if (!scoreHasAction) {
+        it('draws a score with the display name the server sends for it', async () => {
+          const seen = collect('scoreUpdated')
+          await onJoin((client) => {
+            addObjective(client, 'kills', 'Total Kills')
+            setScore(client, 'kills', 'wvffle', 3, chatText('Wvffle the Great'))
+          })
+          assert.ok(seen.length, 'no scoreUpdated')
+          assert.strictEqual(seen[0][2].displayName.toString(), 'Wvffle the Great')
+        })
+
+        it('drops a score from every objective when reset_score names none', async () => {
+          let client
+          await onJoin((c) => {
+            client = c
+            addObjective(c, 'kills', 'Total Kills')
+            addObjective(c, 'deaths', 'Total Deaths')
+            setScore(c, 'kills', 'wvffle', 7)
+            setScore(c, 'deaths', 'wvffle', 2)
+          })
+          assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle.value, 7)
+          assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle.value, 2)
+          client.write('reset_score', { entity_name: 'wvffle', objective_name: undefined })
+          await sleep(100)
+          assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle, undefined)
+          assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle, undefined)
+        })
+      }
+    })
+
     describe('activateItem rotation', () => {
       it('should send the bot rotation in the use_item packet', function (done) {
         // The rotation field in use_item was added in 1.21.1

@@ -328,6 +328,25 @@ export interface Bot extends TypedEmitter<BotEvents> {
 
   placeBlock: (referenceBlock: Block, faceVector: Vec3) => Promise<void>
 
+  /** Reject a placement whose requested face is not the one the bot's own crosshair reaches,
+   *  instead of sending it anyway. Off by default. */
+  placeFaceStrict: boolean
+
+  /** The reach the server grants for entities, from the `entity_interaction_range` attribute
+   *  (1.20.5+), or vanilla's 3.0 default. */
+  entityInteractionRange (): number
+
+  /** The reach the server grants for blocks, from the `block_interaction_range` attribute
+   *  (1.20.5+), or vanilla's 4.5 default. */
+  blockInteractionRange (): number
+
+  /** Whether the entity's hitbox is within `entityInteractionRange() + buffer` of the bot's eye,
+   *  the way the server checks an interact packet. */
+  canInteractWithEntity (entity: Entity, buffer?: number): boolean
+
+  /** Whether the block's cube is within `blockInteractionRange() + buffer` of the bot's eye. */
+  canInteractWithBlock (block: Block, buffer?: number): boolean
+
   placeEntity: (referenceBlock: Block, faceVector: Vec3) => Promise<Entity>
 
   activateBlock: (block: Block, direction?: Vec3, cursorPos?: Vec3) => Promise<void>
@@ -800,15 +819,15 @@ export interface VillagerTrade {
 
 export class ScoreBoard {
   name: string
-  title: string
+  title: ChatMessage
   itemsMap: { [name: string]: ScoreBoardItem }
   items: ScoreBoardItem[]
 
   constructor (packet: object);
 
-  setTitle (title: string): void;
+  setTitle (title: string | object): void;
 
-  add(name: string, value: number): ScoreBoardItem;
+  add(name: string, value: number, display?: string | object): ScoreBoardItem;
 
   remove (name: string): ScoreBoardItem;
 }
