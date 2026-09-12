@@ -37,8 +37,8 @@ jobs:
           path: .stack-mirror
           key: stack-mirror-${{ steps.day.outputs.day }}
           restore-keys: stack-mirror-
-      - name: Install the pi coding agent
-        run: npm install -g @mariozechner/pi-coding-agent@0.73.1
+      - name: Install the pi coding agent and the linter its resolutions are checked with
+        run: npm install -g @mariozechner/pi-coding-agent@0.73.1 standard@17
       - name: Rebuild the PR stacks
         id: build
         env:

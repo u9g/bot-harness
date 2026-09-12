@@ -8,10 +8,16 @@
 // this resolution through git rerere, which only knows about those files, so
 // a change anywhere else would vanish on replay. Such a change fails the
 // resolution instead of being committed.
+//
+// What is validated: no conflict markers, every touched file still parses, and
+// `standard` reports no no-undef/no-unused-vars on them. That last one is the
+// guard against the resolution that keeps a call from one side next to the
+// other side's removal of its import -- a merge that is wrong in a way neither
+// `node --check` nor requiring the package can see.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 
 export type Pr = { number: number, title: string, body: string, head: string }
 export type Unmerged = { file: string, state: string }
@@ -32,6 +38,8 @@ export type Resolution = { touched: string[], turns: number, summary: string }
 export type Resolver = { model: string, resolve: (req: ConflictRequest) => Promise<Resolution> }
 
 const piBin = process.env.PI_BIN || 'pi'
+// Every repo in the stack lints with `standard`, so one binary covers them all.
+const standardBin = process.env.STANDARD_BIN || 'standard'
 const model = process.env.ZAI_MODEL || 'glm-5.3'
 // GLM 5.3 rejects a request with thinking disabled.
 const thinking = process.env.ZAI_THINKING || 'low'
@@ -73,6 +81,34 @@ export function syntaxError (worktree: string, file: string): string | null {
 
 const clip = (s: string, max: number) => s.length > max ? s.slice(0, max) + `\n... (${s.length - max} more bytes cut)` : s
 
+// Rules whose violation means the merge itself is wrong rather than untidy: a
+// name used but never brought into scope, or brought in and never used. Style
+// complaints are left alone -- they are not a reason to drop a PR.
+const mergeRules = new Set(['no-undef', 'no-unused-vars'])
+// "  /abs/path.js:12:7: 'loadJSON' is not defined. (no-undef)", with a trailing
+// " (warning)" on the ones standard does not count as errors.
+const LINT_LINE = /^\s+(\S.*?):(\d+):(\d+): (.+) \(([^()\s]+)\)$/
+
+// Lints the resolved files with the package's own linter, run from the worktree
+// so it picks up that package.json's standard config. Anything the linter has
+// nothing to say about, including a non-JS path, a file the merge deleted, or a
+// linter that crashed, yields no errors: this check only ever adds a reason to
+// reject a resolution, never the reason to accept one. makeResolver refuses to
+// start if standard is missing, so silence here is never a missing binary.
+export function lintErrors (worktree: string, files: string[]): string[] {
+  const lintable = files.filter(f => /\.(c|m)?jsx?$/.test(f) && existsSync(join(worktree, f)))
+  if (!lintable.length) return []
+  const r = spawnSync(standardBin, lintable, { cwd: worktree, encoding: 'utf8', maxBuffer: 1 << 30 })
+  if (r.error || r.stdout == null) return []
+  const out: string[] = []
+  for (const line of r.stdout.split('\n')) {
+    if (line.endsWith('(warning)')) continue
+    const m = LINT_LINE.exec(line)
+    if (m && mergeRules.has(m[5])) out.push(`${relative(worktree, m[1])}:${m[2]}:${m[3]}: ${m[4]} (${m[5]})`)
+  }
+  return out
+}
+
 // The index as `git ls-files -s` lists it, keyed by path.
 function indexListing (wt: string): Map<string, string> {
   const out = new Map<string, string>()
@@ -102,6 +138,7 @@ const rules = `You are finishing a git cherry-pick that stopped on conflicts, in
 
 - Resolve every conflict the way the PR author would if they rebased: the result must keep what the stack already has AND what this PR adds. Do not drop code or tests from either side unless that side deliberately removed them. Keep the surrounding style and indentation, and do not reformat or refactor code the merge did not touch.
 - Edit only the paths listed as unmerged. The build replays your resolution through git rerere, which records only those files, so a change anywhere else would be lost. If a correct result needs a change elsewhere, make no edits and answer with one line starting with "CANNOT:" saying what is needed.
+- Keep each file self-consistent: if you keep a call, keep the import or definition it needs; if you drop the last use of an import, drop the import. The resolution is rejected if the linter finds an undefined or unused name in it.
 - Read before you edit, and never invent the contents of a file you have not read. Use git against the refs you are given (diff, show, log) to see what each side intends.
 - Do not commit, stage, reset, rebase, or stash, and do not run package installs or test suites. Leave no conflict markers.
 - When done, answer with one line summarizing how you resolved it.`
@@ -126,6 +163,12 @@ export function makeResolver (): Resolver | null {
   const probe = spawnSync(piBin, ['--version'], { encoding: 'utf8' })
   if (probe.error || probe.status !== 0) {
     throw new Error(`ZAI_API_KEY is set but "${piBin}" does not run (${probe.error?.message ?? probe.stderr.trim()}); install @mariozechner/pi-coding-agent or point PI_BIN at it`)
+  }
+  // Resolving without the linter is how an unimported helper reaches a package,
+  // so a missing standard stops the run rather than silently loosening the check.
+  const lintProbe = spawnSync(standardBin, ['--version'], { encoding: 'utf8' })
+  if (lintProbe.error || lintProbe.status !== 0) {
+    throw new Error(`ZAI_API_KEY is set but "${standardBin}" does not run (${lintProbe.error?.message ?? lintProbe.stderr.trim()}); resolutions are lint-checked, so install standard@17 or point STANDARD_BIN at it`)
   }
   return {
     model: `zai/${model} through pi ${(probe.stdout || probe.stderr).trim()}`,
@@ -174,6 +217,8 @@ export function makeResolver (): Resolver | null {
         const err = syntaxError(wt, f)
         if (err) throw new Error(`${f} no longer parses:\n${err}`)
       }
+      const lint = lintErrors(wt, [...editable])
+      if (lint.length) throw new Error(`the resolution uses or leaves behind names the merged files do not have:\n${lint.join('\n')}`)
       git(['add', '-A', '--', ...editable], wt)
       const unmerged = git(['diff', '--name-only', '--diff-filter=U'], wt).split('\n').filter(Boolean)
       if (unmerged.length) throw new Error(`still unmerged: ${unmerged.join(', ')}`)
