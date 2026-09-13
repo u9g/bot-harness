@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "0c9f59011af7082e51b5fec97abe5a36f9e12ee6",
-      "tip": "19468563c53153a4dfeb00d6c98083e3f2acb155",
+      "tip": "680b77a0ba07359c43d502cac596fe265dbfba97",
       "tree": "db02eb51374ab64396883782ccf798db1ff526de",
       "prs": [
         {
@@ -62,7 +62,7 @@
       "repo": "ProtoDef-io/ProtoDef",
       "base": "master",
       "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
-      "tip": "bd3eb59d0e03f2e1c478799e823f7c76593d7887",
+      "tip": "8a53c2fe007b0e475297ddbe664c7ace464e8fe0",
       "tree": "b76e64ce2cde89b66f654ee6be0d6a7d96045cfb",
       "prs": [
         {
@@ -86,7 +86,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
-      "tip": "33b41fd2ff9383fae525dd15c75147e1c5fe00c6",
+      "tip": "4dbfe211e1553f5703c09f47b27caf5db08096ae",
       "tree": "f44fd9a555a31bfdf85ca76dfa0f37cdafff364b",
       "prs": [
         {
@@ -174,7 +174,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-      "tip": "de4e226eb519060a2581a82f56900a01dde471fb",
+      "tip": "9fa8f98307b4cb88ab0dc0f89fbcd1d4e98d156c",
       "tree": "be0ea36c108ac620867eda4d5c8a50c1ecc24220",
       "prs": [
         {
@@ -227,7 +227,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
-      "tip": "357aa4edf38ed447c0641255b6a1ae1cf3b54738",
+      "tip": "68bbc8c997e87d7c79ef7173db27f6354de7fcfa",
       "tree": "90a5adc941e8db82e5d1bb6cbd76ec54d57d7120",
       "prs": [
         {
@@ -270,8 +270,7 @@
           "title": "Send Client Information once, when the vanilla client does",
           "head": "b59072e9559a766b3ebe5de714eec4b517750adc",
           "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping both insertions at the shared anchor point: the stack's `describe('player_loaded')` block (from #4064) stays intact, and the PR's new `describe('settings')` bl\n... (128 more bytes cut) (test/internalTest.js; 10 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4067,
@@ -355,8 +354,7 @@
           "title": "Report resource packs as ACCEPTED, DOWNLOADED, SUCCESSFULLY_LOADED and deny once",
           "head": "dc290378d252dda9026c5183e2dd2431a58e1ae5",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-ai",
-          "note": "Resolved `test/internalTest.js` by keeping both sides: the PR's new `describe('resource pack')` block (vanilla accept status sequence and single-DECLINED deny tests, using the already-merged `bot.test\n... (233 more bytes cut) (test/internalTest.js; 10 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4088,
@@ -370,8 +368,7 @@
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
           "head": "ba08fc075d213babf4487e10c3becb7614ab0645",
           "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
-          "status": "resolved-ai",
-          "note": "Resolved test/internalTest.js by keeping both sides' additions at the same insertion point: the stack's `describe('abilities', ...)` block (from #4083, verbatim) followed by the PR's new `describe('en\n... (149 more bytes cut) (test/internalTest.js; 14 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 4093,
@@ -491,7 +488,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-      "tip": "7b1c53387f7676158abe267a9dd94a1c0dd7994d",
+      "tip": "dcbf7eab9524970aabdaebb5532f11fda039b1e9",
       "tree": "b9be260a680586a229f3555441f01d2f8766faaa",
       "prs": [
         {
@@ -556,7 +553,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-      "tip": "045c9e4c5be6d29f73c47786d59e51f2daadd720",
+      "tip": "da21450b76b07edfc43f22bf243ca84301a8a8f7",
       "tree": "c37e434ce8cec977c65536805e7519654d54f151",
       "prs": [
         {
