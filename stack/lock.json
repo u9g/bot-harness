@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "b443bbc1db5122c8a8da379d59f8819f35e1bfa8",
-      "tip": "34f069d57bd07a06a7348c946de60cb5b6d91fad",
-      "tree": "db02eb51374ab64396883782ccf798db1ff526de",
+      "baseSha": "028a08a5683e45cd02db1d3edb223e925b67400c",
+      "tip": "700318f18d9ec376e8c5bcf6856b5a2a933749dd",
+      "tree": "a18217a72774272d510f731d3e8f92855f016437",
       "prs": [
         {
           "number": 1278,
@@ -65,7 +65,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "0d7b6e171fe22aaa237a62e7643a5b2ca0dbde2c",
-      "tip": "724c93d7daabbf2ebf004f0fb1e63e2ff36c4f53",
+      "tip": "613e6334f1d48183242944ff8dea889346a248b3",
       "tree": "f44fd9a555a31bfdf85ca76dfa0f37cdafff364b",
       "prs": [
         {
@@ -95,7 +95,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "0ebdd5120eca8840e3ffd6597cd4e83732b59c9a",
-      "tip": "a07dc20358fdb457711eecea15d8f26dbc181f48",
+      "tip": "98b6554b7ce156fb95bf0613464785fc9dbea077",
       "tree": "6fb18080893b0db43f19fa8206af40c106c4c1e1",
       "prs": [
         {
@@ -125,7 +125,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "fa95d8584d727fc957a87f4776b2aa90b6bf596a",
-      "tip": "81b2732033f2dda9197d4d938392b6643ee7a51d",
+      "tip": "2645d567375ba18dde971a0949937ab4a27dc45b",
       "tree": "be0ea36c108ac620867eda4d5c8a50c1ecc24220",
       "prs": [
         {
@@ -171,7 +171,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "91204b2a034f0663b39814771e236bcb7c8f26c8",
-      "tip": "5facce5a3329c5a041f824c7e016ca4c77cf83c6",
+      "tip": "4ec7d0d7e8ab5dbe70ac9f11b53f164418c56d3f",
       "tree": "90a5adc941e8db82e5d1bb6cbd76ec54d57d7120",
       "prs": [
         {
@@ -362,7 +362,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "74d8b29b10900c53962c8078fcec6ed42b9fb6c0",
-      "tip": "75c2bbc67189331192dc64d5c3dfad21022bb233",
+      "tip": "19872da1862ebff8bf42f59800b896c3638b14bf",
       "tree": "efefd0124d11fa7986278179d45b7f8d03662b7d",
       "prs": [
         {
@@ -377,16 +377,14 @@
           "title": "createHuman: a walkTo for the goal in flight joins that walk instead of superseding it",
           "head": "021933ef4a41ccd07d56538d0f9df02e4cf3aaa1",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "resolved-ai",
-          "note": "Resolved both conflicts: in lib/human.js kept the stack's `requirePhysics` guard and moved its `walkTo` call into the async `startWalk` (so a disabled-physics call still rejects as a promise, per the \n... (229 more bytes cut) (lib/human.js, readme.md; 9 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 379,
           "title": "createHuman: hold the controller through a setback storm",
           "head": "79bed54cb602a431d2210811faf8d936cf584b2b",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "resolved-ai",
-          "note": "In `lib/human.js`, the PR's setback guard (`if (heldUntil > 0) throw new Error('setback')`) was merged into the stack's refactored structure — the entry check now sits at the top of `startWalk` (befor\n... (735 more bytes cut) (lib/human.js, readme.md; 18 turns)"
+          "status": "resolved-rerere"
         },
         {
           "number": 382,
@@ -401,7 +399,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
-      "tip": "6080a7de4145c525aabcfa466e18aab57f82f3d4",
+      "tip": "574dba35de64c2c7dbf1b85530263063175afee7",
       "tree": "c37e434ce8cec977c65536805e7519654d54f151",
       "prs": [
         {
