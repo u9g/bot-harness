@@ -45,8 +45,6 @@ declare module 'mineflayer-pathfinder' {
 		movements?: Movements;
 		/** planning timeout in ms; default bot.pathfinder.thinkTimeout */
 		thinkTimeout?: number;
-		/** false disables the setback guard; defaults { trip: 3, window: 2500, hold: 8000, quiet: 3000 } */
-		setback?: false | { trip?: number; window?: number; hold?: number; quiet?: number };
 	}
 
 	export interface WalkOptions {
@@ -75,8 +73,6 @@ declare module 'mineflayer-pathfinder' {
 		route: Vec3[];
 		/** set to false to suspend the controller without dropping its state */
 		active: boolean;
-		/** true while the setback guard holds the controller; walkTo and lookAt reject with 'setback' */
-		readonly held: boolean;
 		walkTo(goal: Vec3, options?: WalkOptions): Promise<void>;
 		lookAt(point: Vec3, options?: { settleMs?: number }): Promise<void>;
 		/** walk toward the goal a block at a time, building over anything that is not there yet */

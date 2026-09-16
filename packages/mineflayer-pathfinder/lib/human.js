@@ -56,9 +56,6 @@ const horiz = (v) => Math.hypot(v.x, v.z)
 function createHuman (bot, opts = {}) {
   const r = rng(opts.seed ?? (Date.now() ^ (Math.random() * 2 ** 31)))
   const personality = makePersonality(r, opts.personality ?? {})
-  // `trip` forced moves within `window` ms hold the controller for `hold` ms; the hold ends only
-  // after `quiet` ms without a forced move and with the bot on the ground.
-  const setback = opts.setback === false ? null : { trip: 3, window: 2500, hold: 8000, quiet: 3000, ...(opts.setback ?? {}) }
   if (!bot.pathfinder) bot.loadPlugin(require('../index').pathfinder)
 
   // Head state, radians, mineflayer convention (yaw = atan2(-dx, -dz), pitch positive up).
@@ -80,11 +77,8 @@ function createHuman (bot, opts = {}) {
   let stuckJumpAt = 0
   let strafeUntil = 0
   let strafeDir = 'left'
-  const forcedMoveAt = []
-  let lastForcedMoveAt = 0
-  let heldUntil = 0
 
-  const human = { personality, route: [], walkTo, lookAt, bridgeTo, placeAhead, stop, active: true, get held () { return heldUntil > 0 } }
+  const human = { personality, route: [], walkTo, lookAt, bridgeTo, placeAhead, stop, active: true }
 
   function movements () {
     if (opts.movements) return opts.movements
@@ -263,7 +257,6 @@ function createHuman (bot, opts = {}) {
     const speed = horiz(bot.entity.velocity)
     const moving = speed > 0.03
 
-    if (heldUntil > 0 && now >= heldUntil && now - lastForcedMoveAt >= setback.quiet && bot.entity.onGround) heldUntil = 0
     if (walk) tickWalk(walk, now, pos, speed)
     stepHead(moving)
     if (jumpHeld > 0 && --jumpHeld === 0) bot.setControlState('jump', false)
@@ -455,27 +448,31 @@ function createHuman (bot, opts = {}) {
     if (bot.physicsEnabled === false) throw new Error(`${what} needs physics: bot.physicsEnabled is false`)
   }
 
-  // A walkTo for the goal already in flight (within half a block) returns that walk's promise; any
-  // other goal supersedes it. Re-targeting on a timer would otherwise fail every walk before it
-  // took a step.
+  // A walkTo for the goal already in flight (within half a block) with the same effective options
+  // returns that walk's promise; any other goal or options supersedes it. Re-targeting on a timer
+  // would otherwise fail every walk before it took a step.
   function walkTo (goal, o = {}) {
-    if (inflight && inflight.goal.distanceTo(goal) <= 0.5) return inflight.promise
-    const promise = startWalk(goal, o)
-    const mine = { goal: goal.clone(), promise }
+    const opts = { radius: o.radius ?? personality.stopRadius, faceAt: o.faceAt ?? null, timeout: o.timeout ?? 60000 }
+    if (inflight && inflight.goal.distanceTo(goal) <= 0.5 && sameOpts(inflight.opts, opts)) return inflight.promise
+    const promise = startWalk(goal, opts)
+    const mine = { goal: goal.clone(), opts, promise }
     inflight = mine
     const clear = () => { if (inflight === mine) inflight = null }
     promise.then(clear, clear)
     return promise
   }
 
+  function sameOpts (a, b) {
+    return a.radius === b.radius && a.timeout === b.timeout &&
+      (a.faceAt === b.faceAt || (a.faceAt !== null && b.faceAt !== null && a.faceAt.equals(b.faceAt)))
+  }
+
   async function startWalk (goal, o) {
-    if (heldUntil > 0) throw new Error('setback')
     requirePhysics('walkTo')
     if (walk) failWalk(walk, new Error('superseded'))
     const seq = ++planSeq
     const plan = await planRoute(goal, () => seq === planSeq)
     if (seq !== planSeq) throw new Error('superseded')
-    if (heldUntil > 0) throw new Error('setback')
     if (!plan) throw new Error(`no path to ${goal}`)
     const { route, complete } = plan
     return new Promise((resolve, reject) => {
@@ -486,7 +483,7 @@ function createHuman (bot, opts = {}) {
         idx: 0, // next waypoint
         complete, // the route ends at the goal rather than at the closest reachable point
         replanning: false,
-        radius: o.radius ?? personality.stopRadius,
+        radius: o.radius,
         startedAt: now,
         firstStepAt: 0,
         lastProgressAt: now + personality.reaction * 1000,
@@ -497,7 +494,7 @@ function createHuman (bot, opts = {}) {
         resolve,
         reject,
         // Physics can also be turned off mid-walk, which looks exactly like a walk that got stuck.
-        timer: setTimeout(() => failWalk(w, new Error(bot.physicsEnabled === false ? 'walk timed out: physics was disabled mid-walk' : 'walk timed out')), o.timeout ?? 60000)
+        timer: setTimeout(() => failWalk(w, new Error(bot.physicsEnabled === false ? 'walk timed out: physics was disabled mid-walk' : 'walk timed out')), o.timeout)
       }
       walk = w
       human.route = route
@@ -505,7 +502,6 @@ function createHuman (bot, opts = {}) {
   }
 
   async function lookAt (point, o = {}) {
-    if (heldUntil > 0) throw new Error('setback')
     requirePhysics('lookAt')
     await new Promise(resolve => setTimeout(resolve, personality.reaction * 1000 * (0.5 + r())))
     targetYaw = yawTo(bot.entity.position, point)
@@ -640,7 +636,10 @@ function createHuman (bot, opts = {}) {
     targetPitch = null
   }
 
+  // The join record goes now rather than when the promise settles, so a walkTo issued in the same
+  // turn as the stop starts fresh work.
   function stop () {
+    inflight = null
     if (walk) failWalk(walk, new Error('stopped'))
     releaseHead()
   }
@@ -651,15 +650,6 @@ function createHuman (bot, opts = {}) {
     yaw = bot.entity.yaw
     pitch = bot.entity.pitch
     gesture = null
-    if (setback === null) return
-    const now = Date.now()
-    lastForcedMoveAt = now
-    forcedMoveAt.push(now)
-    while (now - forcedMoveAt[0] > setback.window) forcedMoveAt.shift()
-    if (forcedMoveAt.length < setback.trip) return
-    heldUntil = Math.max(heldUntil, now + setback.hold)
-    if (walk) failWalk(walk, new Error('setback'))
-    releaseHead()
   })
   return human
 }

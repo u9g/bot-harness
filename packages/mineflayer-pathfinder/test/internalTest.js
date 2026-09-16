@@ -1290,7 +1290,7 @@ describe('human walker', function () {
     })
     await once(bot, 'chunkColumnLoad')
     bot.loadPlugin(pathfinder)
-    human = createHuman(bot, { seed: 7, setback: false })
+    human = createHuman(bot, { seed: 7 })
   })
   after(() => {
     human.active = false
@@ -1404,6 +1404,44 @@ describe('human walker', function () {
     await next
   })
 
+  it('walkTo reissued for the goal in flight with different options supersedes it', async function () {
+    this.timeout(15000)
+    this.slow(6000)
+    bot.entity.position = spawnPos.clone()
+    await once(bot, 'physicsTick')
+    const first = human.walkTo(goal, { radius: 5 })
+    const second = human.walkTo(goal, { radius: 0.1, faceAt })
+    assert.notStrictEqual(second, first, 'a tighter radius joined the loose walk')
+    await assert.rejects(first, { message: 'superseded' })
+    assert.strictEqual(human.walkTo(goal, { radius: 0.1, faceAt: faceAt.clone() }), second)
+    const dropped = human.walkTo(goal, { radius: 0.1 })
+    assert.notStrictEqual(dropped, second, 'dropping faceAt joined the walk')
+    await assert.rejects(second, { message: 'superseded' })
+    const third = human.walkTo(goal, { radius: 0.1, faceAt })
+    await assert.rejects(dropped, { message: 'superseded' })
+    await third
+    const p = bot.entity.position
+    assert.ok(Math.hypot(p.x - goal.x, p.z - goal.z) < 1, `stopped ${p} away from ${goal}`)
+  })
+
+  it('walkTo issued in the same turn as stop starts a fresh walk', async function () {
+    this.timeout(15000)
+    this.slow(6000)
+    bot.entity.position = spawnPos.clone()
+    await once(bot, 'physicsTick')
+    const before = human.route
+    const first = human.walkTo(goal)
+    // Stop once this walk is under way rather than still planning.
+    while (human.route === before) await once(bot, 'physicsTick')
+    human.stop()
+    const next = human.walkTo(goal)
+    assert.notStrictEqual(next, first, 'the stopped walk was handed out again')
+    await assert.rejects(first, { message: 'stopped' })
+    await next
+    const p = bot.entity.position
+    assert.ok(Math.hypot(p.x - goal.x, p.z - goal.z) < 1, `stopped ${p} away from ${goal}`)
+  })
+
   it('walkTo resolves when the bot already stands in the goal block', async function () {
     this.timeout(15000)
     bot.entity.position = spawnPos.clone()
@@ -1444,49 +1482,6 @@ describe('human walker', function () {
     await second
     bot.pathfinder.getPathFromTo = realGetPath
     assert.ok(slices - atSupersede <= 1, `superseded search ran ${slices - atSupersede} more slices`)
-  })
-
-  it('a setback storm ends the walk and holds walkTo until the server has been quiet', async function () {
-    this.timeout(15000)
-    human.active = false
-    const guarded = createHuman(bot, { seed: 7, setback: { hold: 400, quiet: 200 } })
-    try {
-      bot.entity.position = spawnPos.clone()
-      await once(bot, 'physicsTick')
-      const walk = guarded.walkTo(goal)
-      for (let i = 0; i < 60 && !bot.controlState.forward; i++) await once(bot, 'physicsTick')
-      assert.ok(bot.controlState.forward, 'the walk never started')
-      for (let i = 0; i < 3; i++) bot.emit('forcedMove')
-      await assert.rejects(walk, /setback/)
-      assert.strictEqual(bot.controlState.forward, false, 'controls stay held through the storm')
-      assert.strictEqual(guarded.held, true)
-      await assert.rejects(guarded.walkTo(goal), /setback/)
-      await assert.rejects(guarded.lookAt(faceAt), /setback/)
-      await new Promise(resolve => setTimeout(resolve, 700))
-      await once(bot, 'physicsTick')
-      assert.strictEqual(guarded.held, false, 'the hold ends once the server has been quiet')
-      await guarded.walkTo(spawnPos.offset(1, 0, 0))
-    } finally {
-      guarded.active = false
-      human.active = true
-    }
-  })
-
-  it('a walk whose plan finishes inside a hold rejects with setback', async function () {
-    this.timeout(15000)
-    human.active = false
-    const guarded = createHuman(bot, { seed: 7, setback: { hold: 300, quiet: 100 } })
-    try {
-      bot.entity.position = spawnPos.clone()
-      await once(bot, 'physicsTick')
-      const walk = guarded.walkTo(goal)
-      for (let i = 0; i < 3; i++) bot.emit('forcedMove')
-      await assert.rejects(walk, /setback/)
-      assert.strictEqual(bot.controlState.forward, false)
-    } finally {
-      guarded.active = false
-      human.active = true
-    }
   })
 
   it('walkTo rejects with no path when the route ends under an unreachable goal', async function () {
