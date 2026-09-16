@@ -740,7 +740,6 @@ for (const supportedVersion of versionsUnderTest) {
           done()
         })
       })
-
       it('answers only the latest teleport when a second one lands inside the respawn reply delay', (done) => {
         // After a death the reply to the next teleport waits 1.5 s. A teleport that arrives inside
         // that window replaces it: the deferred reply must not go out with the older coordinates.
@@ -753,7 +752,7 @@ for (const supportedVersion of versionsUnderTest) {
           dz: 0,
           pitch: 0,
           yaw: 0,
-          flags: bot.registry.version['>=']('1.21.3') ? {} : 0,
+          flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0,
           teleportId
         })
         server.on('playerJoin', async (client) => {
@@ -994,7 +993,7 @@ for (const supportedVersion of versionsUnderTest) {
           dz: 0,
           pitch: 0,
           yaw: 0,
-          flags: bot.registry.version['>=']('1.21.3') ? {} : 0,
+          flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0,
           teleportId: 0
         }
         const movementPackets = ['position', 'position_look', 'look', 'flying']
@@ -2687,23 +2686,37 @@ for (const supportedVersion of versionsUnderTest) {
       })
     })
 
+    describe('scoreboard', () => {
+      it('enumerates only the display slots that hold an objective', async () => {
+        server.on('playerJoin', (client) => client.write('login', bot.test.generateLoginPacket()))
+        await once(bot, 'login')
+        bot._client.emit('scoreboard_objective', { name: 'test1', action: 0, displayText: JSON.stringify({ text: 'Test 1' }) })
+        bot._client.emit('scoreboard_display_objective', { name: 'test1', position: 1 })
+        assert.strictEqual(bot.scoreboard.sidebar, bot.scoreboards.test1)
+        assert.strictEqual(bot.scoreboard.list, undefined)
+        assert.deepStrictEqual(Object.keys(bot.scoreboard), ['1'])
+        assert.ok(Object.values(bot.scoreboard).every(sb => sb !== undefined))
+        assert.doesNotThrow(() => { for (const sb of Object.values(bot.scoreboard)) assert.strictEqual(sb.title, 'Test 1') })
+        bot._client.emit('scoreboard_objective', { name: 'test1', action: 1 })
+        assert.deepStrictEqual(Object.keys(bot.scoreboard), [])
+        assert.strictEqual(bot.scoreboard.sidebar, undefined)
+      })
+    })
+
     describe('teams', () => {
-      // The mode is a string mapper from 1.21.6 and a number before it, and 1.21.5 alone maps
-      // the visibility and collision rules to numbers.
       function teamPacket (teamName, mode, players) {
         const text = registry.supportFeature('teamUsesChatComponents') ? chatText : (s) => s
         const modes = ['add', 'remove', 'change', 'join', 'leave']
-        const enumRules = registry.version['>=']('1.21.5') && registry.version['<']('1.21.6')
         return {
           team: teamName,
-          mode: registry.version['>=']('1.21.6') ? modes[mode] : mode,
+          mode: registry.supportFeature('teamModeUsesStringMapper') ? modes[mode] : mode,
           name: text(teamName),
           prefix: text(''),
           suffix: text(''),
           friendlyFire: 1,
           flags: { friendly_fire: true, see_friendly_invisible: false },
-          nameTagVisibility: enumRules ? 0 : 'always',
-          collisionRule: enumRules ? 0 : 'always',
+          nameTagVisibility: 'always',
+          collisionRule: 'always',
           color: 0,
           formatting: 0,
           players
@@ -2731,22 +2744,6 @@ for (const supportedVersion of versionsUnderTest) {
       })
     })
 
-    describe('scoreboard', () => {
-      it('enumerates only the display slots that hold an objective', async () => {
-        server.on('playerJoin', (client) => client.write('login', bot.test.generateLoginPacket()))
-        await once(bot, 'login')
-        bot._client.emit('scoreboard_objective', { name: 'test1', action: 0, displayText: JSON.stringify({ text: 'Test 1' }) })
-        bot._client.emit('scoreboard_display_objective', { name: 'test1', position: 1 })
-        assert.strictEqual(bot.scoreboard.sidebar, bot.scoreboards.test1)
-        assert.strictEqual(bot.scoreboard.list, undefined)
-        assert.deepStrictEqual(Object.keys(bot.scoreboard), ['1'])
-        assert.ok(Object.values(bot.scoreboard).every(sb => sb !== undefined))
-        assert.doesNotThrow(() => { for (const sb of Object.values(bot.scoreboard)) assert.strictEqual(sb.title, 'Test 1') })
-        bot._client.emit('scoreboard_objective', { name: 'test1', action: 1 })
-        assert.deepStrictEqual(Object.keys(bot.scoreboard), [])
-        assert.strictEqual(bot.scoreboard.sidebar, undefined)
-      })
-    })
     describe('tablist', () => {
       it('handles newlines in header and footer', (done) => {
         const HEADER = 'asd\ndsa'
