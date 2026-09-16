@@ -127,14 +127,12 @@ class WorldRenderer {
       this.material.needsUpdate = true
     })
 
-    // Only the mesher reads the block states, and parsing them here would block for as long as
-    // the file is big (150 ms for 26.1), so the text goes to the workers unparsed.
     const blockStates = this.blockStatesData
-      ? Promise.resolve({ json: this.blockStatesData })
-      : this.host.loadText(`blocksStates/${this.assetsVersion}.json`).then(text => ({ text }))
-    blockStates.then((message) => {
+      ? Promise.resolve(this.blockStatesData)
+      : this.host.loadJSON(`blocksStates/${this.assetsVersion}.json`)
+    blockStates.then((json) => {
       for (const worker of this.workers) {
-        worker.postMessage({ type: 'blockStates', ...message })
+        worker.postMessage({ type: 'blockStates', json })
       }
     })
   }
@@ -143,15 +141,15 @@ class WorldRenderer {
     this.uniforms.time.value = this.host.now() / 50
   }
 
-  addColumn (x, z, chunk, minY = 0, worldHeight = 256) {
-    this.loadedChunks[`${x},${z}`] = { minY, worldHeight }
+  addColumn (x, z, chunk) {
+    this.loadedChunks[`${x},${z}`] = true
     for (const worker of this.workers) {
       worker.postMessage({ type: 'chunk', x, z, chunk })
     }
     // The worker cannot mesh anything until blockStates lands, so waiting on the
     // bounds fetch here costs no rendering latency.
-    this.boundsReady.then(() => {
-      for (let y = minY; y < minY + worldHeight; y += 16) {
+    this.whenBoundsReady(() => {
+      for (let y = this.minY; y < this.minY + this.worldHeight; y += 16) {
         const loc = new Vec3(x, y, z)
         this.setSectionDirty(loc)
         this.setSectionDirty(loc.offset(-16, 0, 0))
@@ -163,13 +161,12 @@ class WorldRenderer {
   }
 
   removeColumn (x, z) {
-    const { minY, worldHeight } = this.loadedChunks[`${x},${z}`] ?? { minY: 0, worldHeight: 256 }
     delete this.loadedChunks[`${x},${z}`]
     for (const worker of this.workers) {
       worker.postMessage({ type: 'unloadChunk', x, z })
     }
-    this.boundsReady.then(() => {
-      for (let y = minY; y < minY + worldHeight; y += 16) {
+    this.whenBoundsReady(() => {
+      for (let y = this.minY; y < this.minY + this.worldHeight; y += 16) {
         this.setSectionDirty(new Vec3(x, y, z), false)
         const key = `${x},${y},${z}`
         const mesh = this.sectionMeshs[key]
@@ -179,6 +176,14 @@ class WorldRenderer {
         }
         delete this.sectionMeshs[key]
       }
+    })
+  }
+
+  // fn must not run once a later setVersion() has replaced boundsReady.
+  whenBoundsReady (fn) {
+    const boundsReady = this.boundsReady
+    boundsReady.then(() => {
+      if (this.boundsReady === boundsReady) fn()
     })
   }
 
@@ -208,8 +213,10 @@ class WorldRenderer {
   // Listen for chunk rendering updates emitted if a worker finished a render and resolve if the number
   // of sections not rendered are 0
   waitForChunksToRender () {
-    return new Promise((resolve, reject) => {
-      if (Array.from(this.sectionsOutstanding).length === 0) {
+    // Must chain on boundsReady so every earlier addColumn has registered
+    // its sections before the size check.
+    return this.boundsReady.then(() => new Promise((resolve, reject) => {
+      if (this.sectionsOutstanding.size === 0) {
         resolve()
         return
       }
@@ -221,7 +228,7 @@ class WorldRenderer {
         }
       }
       this.renderUpdateEmitter.on('update', updateHandler)
-    })
+    }))
   }
 
   // Call after listen()/init() have queued chunks. waitForChunksToRender only tracks

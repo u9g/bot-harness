@@ -5,7 +5,6 @@
 //
 //   loadImage(name) -> Promise<{ width, height, data }>  RGBA bytes, top row first
 //   loadJSON(name) -> Promise<object>
-//   loadText(name) -> Promise<string>
 //   createWorker() -> { postMessage(msg, transfer), onMessage(cb), terminate() }
 //   now() -> milliseconds
 //   renderText(text) -> { width, height, data } | null   (optional: username sprites)
