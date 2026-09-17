@@ -3,8 +3,8 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "886d159e4dc349d6b9204df2d17e1ea29e7b546e",
-      "tip": "ac3f4e802e99055b3faffce039208b8c10acbe95",
+      "baseSha": "20a0b0142d99d9a069aa8fec98512ec082b4f0a3",
+      "tip": "ecca6c3247b33c2adbdd6fee02f9c80ddc4d8d38",
       "tree": "78af7c557e036cc6be580429ddddb75eac79bcc0",
       "prs": [
         {
@@ -42,13 +42,6 @@
           "mergeBase": "81612cde17674eeaf4c716b660c317168e9bd910",
           "status": "conflict",
           "note": "data/pc/common/features.json: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
-          "number": 1303,
-          "title": "pc/protocol: set_cursor_item and set_player_inventory carry a plain Slot on 1.21.3",
-          "head": "4cd75dd2c0b400632cf4bce5822939cd26285020",
-          "mergeBase": "81612cde17674eeaf4c716b660c317168e9bd910",
-          "status": "applied"
         }
       ]
     },
@@ -185,9 +178,9 @@
     "mineflayer": {
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
-      "baseSha": "91204b2a034f0663b39814771e236bcb7c8f26c8",
-      "tip": "28840f0f7bbbd0e02c7f000678d8f6012a2e1f9a",
-      "tree": "d4565291b9046f7780356f2f88aecc5a9b4fa439",
+      "baseSha": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
+      "tip": "ba01db368781421b1b67063bf43caf92f4193caf",
+      "tree": "7efbe1a12145061c0791c14773f1dcddcd3c6733",
       "prs": [
         {
           "number": 4021,
@@ -215,7 +208,8 @@
           "title": "physics: send the movement input packets the vanilla client sends",
           "head": "fc480ee8c456de87ce77769b31ba8bcf88703043",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "conflict",
+          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4064,
@@ -234,8 +228,8 @@
         {
           "number": 4074,
           "title": "test: gate the no-chunk physics check on a chunk load instead of a 2 s sleep",
-          "head": "73f7b70d72602d886355ed1274ac0b8c48ddc20d",
-          "mergeBase": "91204b2a034f0663b39814771e236bcb7c8f26c8",
+          "head": "99ca38223e492790b4b9469a2a4b988fe0f7109b",
+          "mergeBase": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
           "status": "applied"
         },
         {
@@ -295,13 +289,6 @@
           "status": "resolved-rerere"
         },
         {
-          "number": 4099,
-          "title": "fix: cancel the deferred respawn reply once it is stale, and write no movement packets outside play",
-          "head": "37ac6d9934b702acd028ad828c59ed46b74efe80",
-          "mergeBase": "91204b2a034f0663b39814771e236bcb7c8f26c8",
-          "status": "applied"
-        },
-        {
           "number": 4103,
           "title": "Window state across close, re-login and respawn: stateId per window, close_window on respawn, closeWindow(null)",
           "head": "5d4dab47f3bfe1f414222cd6c1d39b8b234c6107",
@@ -327,7 +314,7 @@
           "title": "physics: a teleport leaves the standing flag alone",
           "head": "4f31b3e149a462651e5744497f0d81a6d31990d6",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "applied"
         },
         {
           "number": 4111,
@@ -391,8 +378,8 @@
     "mineflayer-pathfinder": {
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
-      "baseSha": "74d8b29b10900c53962c8078fcec6ed42b9fb6c0",
-      "tip": "526cffaaff4e8109398c83317d392f1e81f17350",
+      "baseSha": "5872016d3251050b119c4d4c903bccd2d05f62df",
+      "tip": "99517b625014c8d65511049d56ef8a5328d35f99",
       "tree": "fb6f367a750fb25fb4434a0958c83dba09e52a65",
       "prs": [
         {
@@ -400,13 +387,6 @@
           "title": "createHuman: cap the wait for the head to settle",
           "head": "e836c40bb6a57660700c911c4e9511f9555546f5",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
-          "status": "applied"
-        },
-        {
-          "number": 377,
-          "title": "createHuman: a walkTo for the goal in flight joins that walk instead of superseding it",
-          "head": "b87e689c813b9c92446cc81ecc6d5f27648c7d1b",
-          "mergeBase": "74d8b29b10900c53962c8078fcec6ed42b9fb6c0",
           "status": "applied"
         },
         {
@@ -430,8 +410,8 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
-      "tip": "2d0b1f5e43d51a87c932da4a16f4a8185d664fea",
-      "tree": "45e5682147424e651b26ab1ce998b74007b3573c",
+      "tip": "4eb0463baea8348412cffd9e42c86332b0667a9e",
+      "tree": "61a478c409536e8d0c7651932d508d22357f5fed",
       "prs": [
         {
           "number": 484,
@@ -460,21 +440,6 @@
           "head": "4c2502419e916aec7cba4e5f2005d745ef30eae0",
           "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
           "status": "resolved-rerere"
-        },
-        {
-          "number": 510,
-          "title": "Decode host images without holding the event loop",
-          "head": "3bbee612580004597f382bfac18b520e4021dcda",
-          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "resolved-rerere"
-        },
-        {
-          "number": 511,
-          "title": "Parse the block states in the mesher, not on the calling thread",
-          "head": "6d07b6090125960bd591ed85b89836f981fb9257",
-          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "conflict",
-          "note": "index.d.ts: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 513,

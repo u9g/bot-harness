@@ -21,11 +21,6 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
   const positionUpdateSentEveryTick = bot.supportFeature('positionUpdateSentEveryTick')
   const hasConfigurationState = bot.supportFeature('hasConfigurationState') // 1.20.2+
-  // player_input is sent only when the key set changes; tick_end after every tick.
-  // Servers before 1.21.6 ignore the shift bit of player_input; from 1.21.6 entity_action has no shift entries.
-  const hasPlayerInputPacket = bot.supportFeature('newPlayerInputPacket')
-  const hasTickEndPacket = 'packet_tick_end' in bot.registry.protocol.play.toServer.types
-  const sneakUsesEntityAction = bot.supportFeature('sneakUsesEntityAction')
 
   bot.jumpQueued = false
   bot.jumpTicks = 0 // autojump cooldown
@@ -41,13 +36,6 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   }
   let lastSentYaw = null
   let lastSentPitch = null
-  let lastSentSneak = false
-  let lastSentSprinting = false
-  let lastSentInputs = null
-  // Ticks since the last position packet; a position packet goes out before it passes 20.
-  let positionReminder = 0
-  // Only updateSprinting sets this; the sprint key alone never does.
-  let sprinting = false
   let doPhysicsTimer = null
   let lastPhysicsFrameTime = null
   let shouldUsePhysics = false
@@ -61,12 +49,9 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     yaw: 0,
     pitch: 0,
     onGround: false,
-    hasHorizontalCollision: false,
     time: 0,
     flags: { onGround: false, hasHorizontalCollision: false }
   }
-
-  const collidedHorizontally = () => bot.entity.isCollidedHorizontally === true
 
   // This function should be executed each tick (every 0.05 seconds)
   // How it works: https://gafferongames.com/post/fix_your_timestep/
@@ -99,15 +84,12 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     if (!bot.entity?.position || !Number.isFinite(bot.entity.position.x)) return // entity not ready
     if (bot.blockAt(bot.entity.position) == null) return // check if chunk is unloaded
     if (bot.physicsEnabled && shouldUsePhysics) {
-      updateSprinting()
-      physics.simulatePlayer(new PlayerState(bot, { ...controlState, sprint: sprinting }), world).apply(bot)
+      physics.simulatePlayer(new PlayerState(bot, controlState), world).apply(bot)
       bot.emit('physicsTick')
       bot.emit('physicTick') // Deprecated, only exists to support old plugins. May be removed in the future
     }
     if (shouldUsePhysics) {
-      sendInputPackets()
       updatePosition(now)
-      if (hasTickEndPacket) bot._client.write('tick_end', {})
     }
   }
 
@@ -134,7 +116,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     lastSent.y = position.y
     lastSent.z = position.z
     lastSent.onGround = onGround
-    lastSent.flags = { onGround, hasHorizontalCollision: collidedHorizontally() } // 1.21.3+
+    lastSent.flags = { onGround, hasHorizontalCollision: undefined } // 1.21.3+
     bot._client.write('position', lastSent)
     bot.emit('move', oldPos)
   }
@@ -146,7 +128,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     lastSent.yaw = yaw
     lastSent.pitch = pitch
     lastSent.onGround = onGround
-    lastSent.flags = { onGround, hasHorizontalCollision: collidedHorizontally() } // 1.21.3+
+    lastSent.flags = { onGround, hasHorizontalCollision: undefined } // 1.21.3+
     bot._client.write('look', lastSent)
     bot.emit('move', oldPos)
   }
@@ -162,7 +144,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     lastSent.yaw = yaw
     lastSent.pitch = pitch
     lastSent.onGround = onGround
-    lastSent.flags = { onGround, hasHorizontalCollision: collidedHorizontally() } // 1.21.3+
+    lastSent.flags = { onGround, hasHorizontalCollision: undefined } // 1.21.3+
     bot._client.write('position_look', lastSent)
     bot.emit('move', oldPos)
   }
@@ -203,93 +185,33 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     const pitch = Math.fround(conv.toNotchianPitch(lastSentPitch))
     const position = bot.entity.position
     const onGround = bot.entity.onGround
-    const hasHorizontalCollision = collidedHorizontally()
 
-    // Vanilla thresholds: 2e-4 blocks of movement or 20 ticks since the last position packet.
-    positionReminder++
-    const dx = position.x - lastSent.x
-    const dy = position.y - lastSent.y
-    const dz = position.z - lastSent.z
-    const positionUpdated = dx * dx + dy * dy + dz * dz > 4e-8 || positionReminder >= 20
+    // Only send a position update if necessary, select the appropriate packet
+    const positionUpdated = lastSent.x !== position.x || lastSent.y !== position.y || lastSent.z !== position.z ||
+      // Send a position update every second, even if no other update was made
+      // This function rounds to the nearest 50ms (or PHYSICS_INTERVAL_MS) and checks if a second has passed.
+      (Math.round((now - lastSent.time) / PHYSICS_INTERVAL_MS) * PHYSICS_INTERVAL_MS) >= 1000
     const lookUpdated = lastSent.yaw !== yaw || lastSent.pitch !== pitch
 
     if (positionUpdated && lookUpdated) {
       sendPacketPositionAndLook(position, yaw, pitch, onGround)
+      lastSent.time = now // only reset if positionUpdated is true
     } else if (positionUpdated) {
       sendPacketPosition(position, onGround)
+      lastSent.time = now // only reset if positionUpdated is true
     } else if (lookUpdated) {
       sendPacketLook(yaw, pitch, onGround)
-    } else if (positionUpdateSentEveryTick || onGround !== lastSent.onGround || hasHorizontalCollision !== lastSent.hasHorizontalCollision) {
+    } else if (positionUpdateSentEveryTick || onGround !== lastSent.onGround) {
       // For versions < 1.12, one player packet should be sent every tick
       // for the server to update health correctly
+      // For versions >= 1.12, onGround !== lastSent.onGround should be used, but it doesn't ever trigger outside of login
       bot._client.write('flying', {
-        onGround,
-        flags: { onGround, hasHorizontalCollision } // 1.21.3+
+        onGround: bot.entity.onGround,
+        flags: { onGround: bot.entity.onGround, hasHorizontalCollision: undefined } // 1.21.3+
       })
     }
-    if (positionUpdated) {
-      positionReminder = 0
-      lastSent.time = now
-    }
 
-    lastSent.onGround = onGround // onGround is always set
-    lastSent.hasHorizontalCollision = hasHorizontalCollision
-  }
-
-  // Packet order must match LocalPlayer.tick: shift key, key set, sprinting state, then the movement packet.
-  function sendInputPackets () {
-    if (controlState.sneak !== lastSentSneak) {
-      lastSentSneak = controlState.sneak
-      if (sneakUsesEntityAction) {
-        bot._client.write('entity_action', {
-          entityId: bot.entity.id,
-          actionId: controlState.sneak ? 0 : 1,
-          jumpBoost: 0
-        })
-      }
-    }
-    if (hasPlayerInputPacket) {
-      const inputs = {
-        forward: controlState.forward,
-        backward: controlState.back,
-        left: controlState.left,
-        right: controlState.right,
-        jump: controlState.jump,
-        shift: controlState.sneak,
-        sprint: controlState.sprint
-      }
-      if (lastSentInputs === null || Object.keys(inputs).some(k => inputs[k] !== lastSentInputs[k])) {
-        lastSentInputs = inputs
-        bot._client.write('player_input', { inputs })
-      }
-    }
-    if (sprinting !== lastSentSprinting) {
-      lastSentSprinting = sprinting
-      bot._client.write('entity_action', {
-        entityId: bot.entity.id,
-        actionId: bot.supportFeature('entityActionUsesStringMapper')
-          ? (sprinting ? 'start_sprinting' : 'stop_sprinting')
-          : (sprinting ? 3 : 4),
-        jumpBoost: 0
-      })
-    }
-  }
-
-  // Must mirror LocalPlayer.aiStep: the simulation and start/stop_sprinting both read this state.
-  function updateSprinting () {
-    const mcData = bot.registry
-    const forward = controlState.forward && !controlState.back
-    const enoughFood = bot.food === undefined || bot.food > 6 || bot.game.gameMode === 'creative'
-    const slow = controlState.sneak || bot.usingHeldItem
-    const blind = getEffectLevel(mcData, 'Blindness', bot.entity.effects ?? {}) > 0
-    if (!sprinting) {
-      if (controlState.sprint && forward && enoughFood && !slow && !blind && bot.entity.onGround && !bot.entity.isInWater) sprinting = true
-    }
-    if (sprinting) {
-      const vel = bot.entity.velocity
-      const blocked = collidedHorizontally() && vel.x * vel.x + vel.z * vel.z < 0.06 * 0.06
-      if (!forward || !enoughFood || slow || blind || blocked || bot.entity.isInWater) sprinting = false
-    }
+    lastSent.onGround = bot.entity.onGround // onGround is always set
   }
 
   bot.physics = physics
@@ -339,6 +261,30 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     controlState[control] = state
     if (control === 'jump' && state) {
       bot.jumpQueued = true
+    } else if (control === 'sprint') {
+      bot._client.write('entity_action', {
+        entityId: bot.entity.id,
+        actionId: bot.supportFeature('entityActionUsesStringMapper')
+          ? (state ? 'start_sprinting' : 'stop_sprinting')
+          : (state ? 3 : 4),
+        jumpBoost: 0
+      })
+    } else if (control === 'sneak') {
+      if (bot.supportFeature('newPlayerInputPacket')) {
+        // In 1.21.6+, sneak is handled via player_input packet
+        bot._client.write('player_input', {
+          inputs: {
+            shift: state
+          }
+        })
+      } else {
+        // Legacy entity_action approach for older versions
+        bot._client.write('entity_action', {
+          entityId: bot.entity.id,
+          actionId: state ? 0 : 1,
+          jumpBoost: 0
+        })
+      }
     }
   }
 
@@ -430,22 +376,9 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   }
 
   // 1.21.3+
-  // A forced rotation is answered at once with a look carrying onGround false and no collision; the
-  // last-sent record is left alone.
   bot._client.on('player_rotation', (packet) => {
     bot.entity.yaw = conv.fromNotchianYaw(packet.yaw)
     bot.entity.pitch = conv.fromNotchianPitch(packet.pitch)
-    lastSentYaw = bot.entity.yaw
-    lastSentPitch = bot.entity.pitch
-    bot._client.write('look', {
-      x: lastSent.x,
-      y: lastSent.y,
-      z: lastSent.z,
-      yaw: packet.yaw,
-      pitch: packet.pitch,
-      onGround: false,
-      flags: { onGround: false, hasHorizontalCollision: false }
-    })
   })
 
   // player position and look (clientbound)
@@ -485,35 +418,21 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
     // Note: 1.20.5+ uses a bitflags object, older versions use a bitmask number
     if (typeof packet.flags === 'object') {
-      const oldYaw = conv.toNotchianYaw(bot.entity.yaw)
-      const oldPitch = conv.toNotchianPitch(bot.entity.pitch)
+      // Modern path with bitflags object
+      // Velocity is only set to 0 if the flag is not set, otherwise keep current velocity
+      vel.set(
+        packet.flags.x ? vel.x : 0,
+        packet.flags.y ? vel.y : 0,
+        packet.flags.z ? vel.z : 0
+      )
       // If flag is set, then the corresponding value is relative, else it is absolute
       pos.set(
         packet.flags.x ? (pos.x + packet.x) : packet.x,
         packet.flags.y ? (pos.y + packet.y) : packet.y,
         packet.flags.z ? (pos.z + packet.z) : packet.z
       )
-      newYaw = (packet.flags.yaw ? oldYaw : 0) + packet.yaw
-      newPitch = (packet.flags.pitch ? oldPitch : 0) + packet.pitch
-      // The packet carries a velocity only when all three deltas are present.
-      if (Number.isFinite(packet.dx) && Number.isFinite(packet.dy) && Number.isFinite(packet.dz)) {
-        // A dx/dy/dz flag adds the current velocity to the packet's; yawDelta first turns the
-        // current velocity by the rotation change.
-        let v = vel.clone()
-        if (packet.flags.yawDelta) v = rotateVelocity(v, (oldPitch - newPitch) * PI / 180, (oldYaw - newYaw) * PI / 180)
-        vel.set(
-          (packet.flags.dx ? v.x : 0) + packet.dx,
-          (packet.flags.dy ? v.y : 0) + packet.dy,
-          (packet.flags.dz ? v.z : 0) + packet.dz
-        )
-      } else {
-        // Velocity is only set to 0 if the flag is not set, otherwise keep current velocity
-        vel.set(
-          packet.flags.x ? vel.x : 0,
-          packet.flags.y ? vel.y : 0,
-          packet.flags.z ? vel.z : 0
-        )
-      }
+      newYaw = (packet.flags.yaw ? conv.toNotchianYaw(bot.entity.yaw) : 0) + packet.yaw
+      newPitch = (packet.flags.pitch ? conv.toNotchianPitch(bot.entity.pitch) : 0) + packet.pitch
     } else {
       // Legacy path with bitmask number
       // Velocity is only set to 0 if the flag is not set, otherwise keep current velocity
@@ -560,7 +479,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
       return
     }
 
-    sendTeleportReply(pos, newYaw, newPitch)
+    sendPacketPositionAndLook(pos, newYaw, newPitch, bot.entity.onGround)
 
     shouldUsePhysics = true
     bot.jumpTicks = 0
@@ -568,34 +487,6 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     lastSentPitch = bot.entity.pitch
 
     bot.emit('forcedMove')
-  }
-
-  // Vanilla Vec3.xRot then Vec3.yRot, angles in radians.
-  function rotateVelocity (v, pitchDelta, yawDelta) {
-    const cp = Math.cos(pitchDelta)
-    const sp = Math.sin(pitchDelta)
-    const y = v.y * cp + v.z * sp
-    const z = v.z * cp - v.y * sp
-    const cy = Math.cos(yawDelta)
-    const sy = Math.sin(yawDelta)
-    return new Vec3(v.x * cy + z * sy, y, z * cy - v.x * sy)
-  }
-
-  // The reply to a teleport carries onGround false and no collision and leaves the last-sent record
-  // alone, so the next tick compares against what was sent before the teleport.
-  function sendTeleportReply (position, yaw, pitch) {
-    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return
-    const oldPos = new Vec3(lastSent.x, lastSent.y, lastSent.z)
-    bot._client.write('position_look', {
-      x: position.x,
-      y: position.y,
-      z: position.z,
-      yaw,
-      pitch,
-      onGround: false,
-      flags: { onGround: false, hasHorizontalCollision: false } // 1.21.3+
-    })
-    bot.emit('move', oldPos)
   }
 
   bot.waitForTicks = async function (ticks) {
