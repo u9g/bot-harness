@@ -2470,7 +2470,9 @@
       pitch: f32
    # MC: ClientboundOpenBookPacket
    packet_open_book:
-      hand: varint
+      hand: varint =>
+         - main_hand
+         - off_hand
    # MC: ClientboundOpenScreenPacket
    packet_open_window:
       windowId: varint
@@ -3465,7 +3467,10 @@
       chunksPerTick: f32
    # MC: ServerboundClientCommandPacket
    packet_client_command:
-      actionId: varint
+      actionId: varint =>
+         - perform_respawn
+         - request_stats
+         - request_gamerule_values
    # MC: ServerboundClientTickEndPacket
    packet_tick_end:
       # Empty
@@ -3725,7 +3730,9 @@
       entityId: varint
    # MC: ServerboundSwingPacket
    packet_arm_animation:
-      hand: varint
+      hand: varint =>
+         - main_hand
+         - off_hand
    # MC: ServerboundTeleportToEntityPacket
    packet_spectate:
       target: UUID
@@ -3742,7 +3749,9 @@
          errorMessage?: anonymousNbt
    # MC: ServerboundUseItemOnPacket
    packet_block_place:
-      hand: varint
+      hand: varint =>
+         - main_hand
+         - off_hand
       location: position
       direction: varint
       cursorX: f32
@@ -3753,7 +3762,9 @@
       sequence: varint
    # MC: ServerboundUseItemPacket
    packet_use_item:
-      hand: varint
+      hand: varint =>
+         - main_hand
+         - off_hand
       sequence: varint
       rotation: vec2f
 

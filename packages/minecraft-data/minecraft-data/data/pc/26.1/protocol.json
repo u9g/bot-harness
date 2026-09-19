@@ -7838,7 +7838,16 @@
           [
             {
               "name": "hand",
-              "type": "varint"
+              "type": [
+                "mapper",
+                {
+                  "type": "varint",
+                  "mappings": {
+                    "0": "main_hand",
+                    "1": "off_hand"
+                  }
+                }
+              ]
             }
           ]
         ],
@@ -10657,7 +10666,17 @@
           [
             {
               "name": "actionId",
-              "type": "varint"
+              "type": [
+                "mapper",
+                {
+                  "type": "varint",
+                  "mappings": {
+                    "0": "perform_respawn",
+                    "1": "request_stats",
+                    "2": "request_gamerule_values"
+                  }
+                }
+              ]
             }
           ]
         ],
@@ -10854,7 +10873,16 @@
             },
             {
               "name": "hand",
-              "type": "varint"
+              "type": [
+                "mapper",
+                {
+                  "type": "varint",
+                  "mappings": {
+                    "0": "main_hand",
+                    "1": "off_hand"
+                  }
+                }
+              ]
             },
             {
               "name": "location",
@@ -11528,7 +11556,16 @@
           [
             {
               "name": "hand",
-              "type": "varint"
+              "type": [
+                "mapper",
+                {
+                  "type": "varint",
+                  "mappings": {
+                    "0": "main_hand",
+                    "1": "off_hand"
+                  }
+                }
+              ]
             }
           ]
         ],
@@ -11597,7 +11634,16 @@
           [
             {
               "name": "hand",
-              "type": "varint"
+              "type": [
+                "mapper",
+                {
+                  "type": "varint",
+                  "mappings": {
+                    "0": "main_hand",
+                    "1": "off_hand"
+                  }
+                }
+              ]
             },
             {
               "name": "location",
@@ -11638,7 +11684,16 @@
           [
             {
               "name": "hand",
-              "type": "varint"
+              "type": [
+                "mapper",
+                {
+                  "type": "varint",
+                  "mappings": {
+                    "0": "main_hand",
+                    "1": "off_hand"
+                  }
+                }
+              ]
             },
             {
               "name": "sequence",
