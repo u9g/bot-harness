@@ -4,11 +4,12 @@ const TWEEN = require('@tweenjs/tween.js')
 const Entity = require('./entity/Entity')
 const { getItemMesh, animateItem } = require('./entity/Item')
 const { dispose3 } = require('./dispose')
-const { defaultHost } = require('./host')
 
-function getEntityMesh (entity, scene, host, version) {
+const { createCanvas } = require('canvas')
+
+function getEntityMesh (entity, scene, version) {
   // A dropped item is its own item's model, and the stack only arrives after the spawn.
-  if (entity.itemName) return getItemMesh(entity.itemName, version)
+  if (entity.itemName) return getItemMesh(entity.itemName, version, () => missingModel(entity))
   if (entity.name === 'item') return null
   if (entity.name) {
     try {
@@ -16,14 +17,21 @@ function getEntityMesh (entity, scene, host, version) {
       if (entity.skin) textures.default = entity.skin
       if (entity.cape) textures.cape = entity.cape
       const model = entity.name === 'player' && entity.skinModel === 'slim' ? 'player_slim' : entity.name
-      const e = new Entity('1.16.4', model, scene, textures, host)
+      const e = new Entity('1.16.4', model, scene, textures)
 
-      const label = entity.username !== undefined && host.renderText && host.renderText(entity.username)
-      if (label) {
-        const tex = new THREE.DataTexture(label.data, label.width, label.height, THREE.RGBAFormat)
-        tex.magFilter = THREE.LinearFilter
-        tex.minFilter = THREE.LinearFilter
-        tex.flipY = true
+      if (entity.username !== undefined) {
+        const canvas = createCanvas(500, 100)
+
+        const ctx = canvas.getContext('2d')
+        ctx.font = '50pt Arial'
+        ctx.fillStyle = '#000000'
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+
+        const txt = entity.username
+        ctx.fillText(txt, 100, 0)
+
+        const tex = new THREE.Texture(canvas)
         tex.needsUpdate = true
         const spriteMat = new THREE.SpriteMaterial({ map: tex })
         const sprite = new THREE.Sprite(spriteMat)
@@ -43,6 +51,10 @@ function getEntityMesh (entity, scene, host, version) {
     }
   }
 
+  return missingModel(entity)
+}
+
+function missingModel (entity) {
   const geometry = new THREE.BoxGeometry(entity.width, entity.height, entity.width)
   geometry.translate(0, entity.height / 2, 0)
   const material = new THREE.MeshBasicMaterial({ color: 0xff00ff })
@@ -92,11 +104,12 @@ function animateWalk (mesh, ticks) {
 }
 
 class Entities {
-  constructor (scene, host = defaultHost()) {
+  constructor (scene) {
     this.scene = scene
-    this.host = host
     this.entities = {}
-    this.lastAnimate = host.now()
+    // What the spawn said about each dropped item, since later partial updates carry only the id
+    this.items = {}
+    this.lastAnimate = performance.now()
   }
 
   setVersion (version) {
@@ -105,7 +118,7 @@ class Entities {
   }
 
   animate () {
-    const now = this.host.now()
+    const now = performance.now()
     const ticks = (now - this.lastAnimate) / 50
     this.lastAnimate = now
     if (ticks === 0) return
@@ -121,20 +134,14 @@ class Entities {
       dispose3(mesh)
     }
     this.entities = {}
+    this.items = {}
   }
 
   update (entity) {
-    // An invisible entity has no model in the vanilla client, so it gets no mesh here; one that
-    // was visible when it spawned loses the mesh it already has.
-    if (entity.invisible) {
-      const hidden = this.entities[entity.id]
-      if (hidden) {
-        this.scene.remove(hidden)
-        dispose3(hidden)
-        delete this.entities[entity.id]
-      }
-      return
-    }
+    if (entity.name === 'item') this.items[entity.id] = { name: entity.name, width: entity.width, height: entity.height }
+    if (this.items[entity.id]) entity = { ...this.items[entity.id], ...entity }
+    if (entity.delete) delete this.items[entity.id]
+
     // A dropped item's stack arrives after its spawn and can change; its mesh is that stack's model.
     const known = this.entities[entity.id]
     if (known && entity.itemName !== undefined && known.itemName !== entity.itemName) {
@@ -144,7 +151,7 @@ class Entities {
     }
     if (!this.entities[entity.id]) {
       if (!entity.pos) return
-      const mesh = getEntityMesh(entity, this.scene, this.host, this.version)
+      const mesh = getEntityMesh(entity, this.scene, this.version)
       if (!mesh) return
       mesh.itemName = entity.itemName
       this.entities[entity.id] = mesh

@@ -2,6 +2,24 @@ const { spiral, ViewRect, chunkPos } = require('./simpleUtils')
 const { Vec3 } = require('vec3')
 const EventEmitter = require('events')
 
+// Skin and cape texture URLs of a player entity (textures.minecraft.net on
+// online-mode servers); nothing for other entities or players without skin data
+function playerSkin (bot, e) {
+  const skinData = e.username !== undefined && bot.players[e.username]?.skinData
+  if (!skinData) return { skinModel: defaultSkinModel(e.uuid) }
+  return { skin: skinData.url, skinModel: skinData.model, cape: skinData.capeUrl }
+}
+
+// Vanilla's DefaultPlayerSkin: a player without skin data is Alex when the Java hashCode of
+// their UUID is odd, which is the xor of the lowest bit of each 32-bit quarter.
+function defaultSkinModel (uuid) {
+  if (typeof uuid !== 'string') return undefined
+  const hex = uuid.replace(/-/g, '')
+  if (hex.length !== 32) return undefined
+  const odd = [7, 15, 23, 31].reduce((acc, i) => acc ^ parseInt(hex[i], 16), 0) & 1
+  return odd ? 'slim' : undefined
+}
+
 // A dropped item's stack lives in the entity's metadata, keyed by the raw metadata index.
 function droppedItemName (registry, entity) {
   if (entity.name !== 'item' || !entity.metadata) return undefined
@@ -16,22 +34,18 @@ function droppedItemName (registry, entity) {
   }
 }
 
-// Bit 0x20 of the shared entity flags, metadata index 0 on every version.
-const INVISIBLE_FLAG = 0x20
-
-// The vanilla client draws nothing for an invisible entity: LivingEntityRenderer.getRenderType
-// returns null once isBodyVisible is false and the entity is not glowing. Servers lean on that for
-// holograms, which are invisible marker armour stands carrying a name tag.
-function isInvisible (entity) {
-  return (((entity.metadata && entity.metadata[0]) || 0) & INVISIBLE_FLAG) !== 0
-}
-
 class WorldView extends EventEmitter {
   constructor (world, viewDistance, position = new Vec3(0, 0, 0), emitter = null) {
     super()
     this.world = world
     this.viewDistance = viewDistance
     this.loadedChunks = {}
+    // loadChunk awaits the world, so a load can finish after its column was unloaded or the world
+    // was replaced. Each load records a token under its column key and the world generation it read
+    // from; it only emits if both are still current once the column arrives.
+    this.pendingLoads = {}
+    this.nextLoadToken = 0
+    this.worldGeneration = 0
     this.lastPos = new Vec3(0, 0, 0).update(position)
     this.emitter = emitter || this
 
@@ -51,13 +65,11 @@ class WorldView extends EventEmitter {
       // 'move': botPosition,
       entitySpawn: function (e) {
         if (e === bot.entity) return
-        worldView.emitter.emit('entity', { id: e.id, name: e.name, pos: e.position, width: e.width, height: e.height, username: e.username, riding: !!e.vehicle, ...playerSkin(bot, e), itemName: droppedItemName(bot.registry, e), invisible: isInvisible(e) })
+        worldView.emitter.emit('entity', { id: e.id, name: e.name, pos: e.position, width: e.width, height: e.height, username: e.username, riding: !!e.vehicle, itemName: droppedItemName(bot.registry, e), ...playerSkin(bot, e) })
       },
       entityUpdate: function (e) {
-        // The metadata that carries the invisible flag arrives after the spawn, and a mob can turn
-        // invisible at any time, so the flag is re-read on every metadata update.
-        if (e === bot.entity) return
-        worldView.emitter.emit('entity', { id: e.id, name: e.name, pos: e.position, width: e.width, height: e.height, username: e.username, riding: !!e.vehicle, invisible: isInvisible(e), itemName: droppedItemName(bot.registry, e) })
+        const itemName = droppedItemName(bot.registry, e)
+        if (itemName !== undefined) worldView.emitter.emit('entity', { id: e.id, pos: e.position, itemName })
       },
       entityMoved: function (e) {
         worldView.emitter.emit('entity', { id: e.id, pos: e.position, pitch: e.pitch, yaw: e.yaw })
@@ -84,7 +96,7 @@ class WorldView extends EventEmitter {
       // chunkColumnUnload) and may replace bot.world with a fresh object; follow it so chunks that
       // load afterwards are read from the world the bot is now in, not the one it left.
       login: function () {
-        worldView.world = bot.world
+        worldView.setWorld(bot.world)
       },
       blockUpdate: function (oldBlock, newBlock) {
         const stateId = newBlock.stateId ? newBlock.stateId : ((newBlock.type << 4) | newBlock.metadata)
@@ -99,7 +111,7 @@ class WorldView extends EventEmitter {
     for (const id in bot.entities) {
       const e = bot.entities[id]
       if (e && e !== bot.entity) {
-        this.emitter.emit('entity', { id: e.id, name: e.name, pos: e.position, width: e.width, height: e.height, username: e.username, riding: !!e.vehicle, ...playerSkin(bot, e), itemName: droppedItemName(bot.registry, e), invisible: isInvisible(e) })
+        this.emitter.emit('entity', { id: e.id, name: e.name, pos: e.position, width: e.width, height: e.height, username: e.username, riding: !!e.vehicle, itemName: droppedItemName(bot.registry, e), ...playerSkin(bot, e) })
       }
     }
   }
@@ -131,16 +143,27 @@ class WorldView extends EventEmitter {
     }
   }
 
+  setWorld (world) {
+    this.world = world
+    this.worldGeneration++
+  }
+
   async loadChunk (pos) {
     const [botX, botZ] = chunkPos(this.lastPos)
     const dx = Math.abs(botX - Math.floor(pos.x / 16))
     const dz = Math.abs(botZ - Math.floor(pos.z / 16))
     if (dx < this.viewDistance && dz < this.viewDistance) {
+      const key = `${pos.x},${pos.z}`
+      const token = ++this.nextLoadToken
+      const generation = this.worldGeneration
+      this.pendingLoads[key] = token
       const column = await this.world.getColumnAt(pos)
+      if (this.pendingLoads[key] !== token || this.worldGeneration !== generation) return
+      delete this.pendingLoads[key]
       if (column) {
         const chunk = column.toJson()
         this.emitter.emit('loadChunk', { x: pos.x, z: pos.z, chunk })
-        this.loadedChunks[`${pos.x},${pos.z}`] = true
+        this.loadedChunks[key] = true
       }
     }
   }
@@ -148,6 +171,7 @@ class WorldView extends EventEmitter {
   unloadChunk (pos) {
     this.emitter.emit('unloadChunk', { x: pos.x, z: pos.z })
     delete this.loadedChunks[`${pos.x},${pos.z}`]
+    delete this.pendingLoads[`${pos.x},${pos.z}`]
   }
 
   async updatePosition (pos, force = false) {

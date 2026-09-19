@@ -4,9 +4,5 @@ module.exports = {
   MapControls: require('./lib/controls').MapControls,
   Entity: require('./lib/entity/Entity'),
   getBufferFromStream: require('./lib/simpleUtils').getBufferFromStream,
-  supportedVersions: require('./lib/version').supportedVersions,
-  defaultHost: require('./lib/host').defaultHost,
-  createNodeHost: require('./lib/host/node').createNodeHost,
-  createBrowserHost: require('./lib/host/browser').createBrowserHost,
-  createElectronHost: require('./lib/host/electron').createElectronHost
+  supportedVersions: require('./lib/version').supportedVersions
 }

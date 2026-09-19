@@ -1,7 +1,9 @@
-const THREE = require('three')
+/* global THREE */
+
 const entities = require('./entities.json')
-const { defaultHost } = require('../host')
-const { textureFromPixels, loadPixels, loadTexture } = require('../textures')
+const { loadTexture } = globalThis.isElectron ? require('../utils.electron.js') : require('../utils')
+let createCanvas
+try { ({ createCanvas } = require('canvas')) } catch {}
 
 const elemFaces = {
   up: {
@@ -129,6 +131,9 @@ function addCube (attr, boneId, bone, cube, texWidth = 64, texHeight = 64) {
 }
 
 function applyTexture (material, texture) {
+  texture.magFilter = THREE.NearestFilter
+  texture.minFilter = THREE.NearestFilter
+  texture.flipY = false
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
   material.map = texture
@@ -141,15 +146,24 @@ const legacySkinCopies = [
   [44, 16, -8, 32, 4, 4], [48, 16, -8, 32, 4, 4], [40, 20, 0, 32, 4, 12], [44, 20, -8, 32, 4, 12], [48, 20, -16, 32, 4, 12], [52, 20, -8, 32, 4, 12]
 ]
 
+// RGBA rows of a loaded texture. A DataTexture carries them; an image is drawn once to read them.
+function texturePixels (image) {
+  if (image.data) return image.data
+  const ctx = createCanvas(image.width, image.height).getContext('2d')
+  ctx.drawImage(image, 0, 0)
+  return ctx.getImageData(0, 0, image.width, image.height).data
+}
+
 // Same steps as vanilla's HttpTexture.processLegacySkin. Skins predating 1.8 are 64x32 and
 // the player geometry samples a 64x64 sheet: the left limbs become mirrored copies of the
 // right ones, and an overlay block with no transparency at all was never used as a hat, so
 // its hat rows are dropped. Every skin then gets its base layers forced opaque (head, body
 // row, lower limbs), which is what makes the second layer the only see-through one. Capes are
 // 64x32 by design and never pass through here.
-function prepareSkin (image) {
-  if (image.width !== 64 || (image.height !== 32 && image.height !== 64)) return image
-  const src = image.data
+function prepareSkin (texture) {
+  const image = texture.image
+  if (image.width !== 64 || (image.height !== 32 && image.height !== 64)) return texture
+  const src = texturePixels(image)
   const out = new Uint8Array(64 * 64 * 4)
   out.set(src)
   const at = (x, y) => (y * 64 + x) * 4
@@ -168,10 +182,12 @@ function prepareSkin (image) {
   for (const [x0, y0, x1, y1] of [[0, 0, 32, 16], [0, 16, 64, 32], [16, 48, 48, 64]]) {
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) out[at(x, y) + 3] = 255
   }
-  return { width: 64, height: 64, data: out }
+  const prepared = new THREE.DataTexture(out, 64, 64, THREE.RGBAFormat)
+  prepared.needsUpdate = true
+  return prepared
 }
 
-function getMesh (texture, jsonModel, override, host) {
+function getMesh (texture, jsonModel, override) {
   const bones = {}
 
   const geoData = {
@@ -248,14 +264,13 @@ function getMesh (texture, jsonModel, override, host) {
   // never sees (a player across the server) costs no fetch.
   mesh.onBeforeRender = () => {
     mesh.onBeforeRender = () => {}
-    const apply = texture => { if (texture) applyTexture(material, texture) }
     if (texture) {
-      loadTexture(host, texture).then(texture => {
-        apply(texture)
-        if (override) loadPixels(host, override).then(pixels => { if (pixels) applyTexture(material, textureFromPixels(prepareSkin(pixels))) })
+      loadTexture(texture, texture => {
+        applyTexture(material, texture)
+        if (override) loadTexture(override, texture => applyTexture(material, prepareSkin(texture)))
       })
     } else {
-      loadTexture(host, override).then(apply)
+      loadTexture(override, texture => applyTexture(material, texture))
     }
   }
 
@@ -263,7 +278,7 @@ function getMesh (texture, jsonModel, override, host) {
 }
 
 class Entity {
-  constructor (version, type, scene, textures = {}, host = defaultHost()) {
+  constructor (version, type, scene, textures = {}) {
     const e = entities[type]
     if (!e) throw new Error(`Unknown entity ${type}`)
 
@@ -272,7 +287,7 @@ class Entity {
       const texture = e.textures[name]
       if (!texture && !textures[name]) continue
       // console.log(JSON.stringify(jsonModel, null, 2))
-      const mesh = getMesh(texture && texture.replace('textures', 'textures/' + version) + '.png', jsonModel, textures[name], host)
+      const mesh = getMesh(texture && texture.replace('textures', 'textures/' + version) + '.png', jsonModel, textures[name])
       /* const skeletonHelper = new THREE.SkeletonHelper( mesh )
       skeletonHelper.material.linewidth = 2
       scene.add( skeletonHelper ) */

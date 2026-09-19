@@ -1,3 +1,4 @@
+/* global THREE */
 function safeRequire (path) {
   try {
     return require(path)
@@ -7,15 +8,16 @@ function safeRequire (path) {
 }
 const { spawn } = require('child_process')
 const net = require('net')
-const THREE = require('three')
+global.THREE = require('three')
+global.Worker = require('worker_threads').Worker
 const { createCanvas } = safeRequire('node-canvas-webgl/lib')
 
-const { WorldView, Viewer, getBufferFromStream, createNodeHost } = require('../viewer')
+const { WorldView, Viewer, getBufferFromStream } = require('../viewer')
 
-module.exports = (bot, { viewDistance = 6, output = 'output.mp4', frames = -1, width = 512, height = 512, logFFMPEG = false, jpegOptions, numWorkers }) => {
+module.exports = (bot, { viewDistance = 6, output = 'output.mp4', frames = -1, width = 512, height = 512, logFFMPEG = false, jpegOptions }) => {
   const canvas = createCanvas(width, height)
   const renderer = new THREE.WebGLRenderer({ canvas })
-  const viewer = new Viewer(renderer, { host: createNodeHost(), numWorkers })
+  const viewer = new Viewer(renderer)
 
   if (!viewer.setVersion(bot.version)) {
     return false

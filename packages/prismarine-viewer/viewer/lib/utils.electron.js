@@ -1,19 +1,15 @@
 /* global document */
-// Deprecated: the viewer loads through a host now (see ./host). Kept for code
-// that imported these loaders directly.
-const { createElectronHost } = require('./host/electron')
-const { loadTexture: load } = require('./textures')
 const THREE = require('three')
 const path = require('path')
 
-let host
-function getHost () {
-  if (!host) host = createElectronHost()
-  return host
-}
-
+const textureCache = {}
 function loadTexture (texture, cb) {
-  load(getHost(), texture).then(texture => { if (texture) cb(texture) })
+  if (textureCache[texture]) return cb(textureCache[texture])
+  const url = /^https?:\/\//.test(texture) ? texture : path.resolve(__dirname, '../../public/' + texture)
+  new THREE.TextureLoader().load(url, loaded => {
+    textureCache[texture] = loaded
+    cb(loaded)
+  }, undefined, () => {})
 }
 
 const pixelCache = {}
@@ -32,7 +28,7 @@ function loadPixels (texture, cb) {
 }
 
 function loadJSON (json, cb) {
-  getHost().loadJSON(json).then(cb)
+  cb(require(path.resolve(__dirname, '../../public/' + json)))
 }
 
 module.exports = { loadTexture, loadPixels, loadJSON }

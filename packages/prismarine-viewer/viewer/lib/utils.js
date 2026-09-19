@@ -1,13 +1,3 @@
-// Deprecated: the viewer loads through a host now (see ./host). Kept for code
-// that imported these loaders directly.
-const { defaultHost } = require('./host')
-const { loadTexture: load } = require('./textures')
-
-let host
-function getHost () {
-  if (!host) host = defaultHost()
-  return host
-}
 function safeRequire (path) {
   try {
     return require(path)
@@ -17,10 +7,26 @@ function safeRequire (path) {
 }
 const { loadImage } = safeRequire('node-canvas-webgl/lib')
 const { createCanvas } = safeRequire('canvas')
+const THREE = require('three')
 const path = require('path')
 
+const textureCache = {}
+// todo not ideal, export different functions for browser and node
 function loadTexture (texture, cb) {
-  load(getHost(), texture).then(texture => { if (texture) cb(texture) })
+  if (process.platform === 'browser') {
+    return require('./utils.web').loadTexture(texture, cb)
+  }
+
+  if (textureCache[texture]) {
+    cb(textureCache[texture])
+  } else {
+    // bundled textures are files under public/; player skins are http(s) URLs
+    const src = /^https?:\/\//.test(texture) ? texture : path.resolve(__dirname, '../../public/' + texture)
+    loadImage(src).then(image => {
+      textureCache[texture] = new THREE.CanvasTexture(image)
+      cb(textureCache[texture])
+    }).catch(() => {})
+  }
 }
 
 const pixelCache = {}
@@ -43,7 +49,10 @@ function loadPixels (texture, cb) {
 }
 
 function loadJSON (json, cb) {
-  getHost().loadJSON(json).then(cb)
+  if (process.platform === 'browser') {
+    return require('./utils.web').loadJSON(json, cb)
+  }
+  cb(require(path.resolve(__dirname, '../../public/' + json)))
 }
 
 module.exports = { loadTexture, loadPixels, loadJSON }
