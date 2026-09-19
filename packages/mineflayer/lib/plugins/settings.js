@@ -21,7 +21,9 @@ const viewDistanceToBits = {
 }
 
 function inject (bot, options) {
-  function clientInformation () {
+  function setSettings (settings) {
+    extend(bot.settings, settings)
+
     // chat
     const chatBits = chatToBits[bot.settings.chat]
     assert.ok(chatBits != null, `invalid chat setting: ${bot.settings.chat}`)
@@ -50,7 +52,8 @@ function inject (bot, options) {
           bot.settings.skinParts.showRightPants << 5 |
           bot.settings.skinParts.showHat << 6
 
-    return {
+    // write the packet
+    bot._client.write('settings', {
       locale: bot.settings.locale || 'en_US',
       viewDistance: viewDistanceBits,
       chatFlags: chatBits,
@@ -60,14 +63,7 @@ function inject (bot, options) {
       enableTextFiltering: bot.settings.enableTextFiltering,
       enableServerListing: bot.settings.enableServerListing,
       particleStatus: bot.settings.particleStatus
-    }
-  }
-
-  function setSettings (settings) {
-    extend(bot.settings, settings)
-
-    // write the packet
-    bot._client.write('settings', clientInformation())
+    })
   }
 
   bot.settings = {
@@ -96,12 +92,8 @@ function inject (bot, options) {
     particleStatus: 'all'
   }
 
-  // On 1.20.2+ node-minecraft-protocol sends Client Information during the configuration
-  // phase; give it the bot's settings so the server is never told two different things.
-  options.clientSettings = options.clientSettings ?? clientInformation()
-
   bot._client.on('login', () => {
-    if (!bot.supportFeature('hasConfigurationState')) setSettings({})
+    setSettings({})
   })
 
   bot.setSettings = setSettings

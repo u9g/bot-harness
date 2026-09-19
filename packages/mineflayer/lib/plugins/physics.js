@@ -80,7 +80,6 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
   function tickPhysics (now) {
     if (bot._client.state !== 'play') return // do nothing outside of the play state (e.g. server transfer configuration phase)
-    flushReplies()
     if (!bot.entity?.position || !Number.isFinite(bot.entity.position.x)) return // entity not ready
     if (bot.blockAt(bot.entity.position) == null) return // check if chunk is unloaded
     if (bot.physicsEnabled && shouldUsePhysics) {
@@ -102,9 +101,6 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     clearInterval(doPhysicsTimer)
     doPhysicsTimer = null
     cancelRespawnReply()
-    clearTimeout(replyTimer)
-    replyTimer = null
-    pendingReplies.length = 0
   }
 
   function sendPacketPosition (position, onGround) {
@@ -382,32 +378,9 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   })
 
   // player position and look (clientbound)
-  // The vanilla client hands every play packet to the client thread, which drains the queue at the
-  // start of a tick (PacketUtils.ensureRunningOnSameThread) and writes each reply as the packet is
-  // handled. So a teleport is answered at most once per tick however fast the server sends them,
-  // and replies to different packets (a pong, a teleport confirm) leave in packet arrival order.
-  const pendingReplies = []
-  let replyTimer = null
-
-  function flushReplies () {
-    clearTimeout(replyTimer)
-    replyTimer = null
-    if (bot._client.state !== 'play') return
-    while (pendingReplies.length) pendingReplies.shift()()
-  }
-
-  bot._replyOnNextTick = (reply) => {
-    pendingReplies.push(reply)
-    // While no tick is running (the login packet starts it) a reply waits at most one tick.
-    if (doPhysicsTimer === null && replyTimer === null) replyTimer = setTimeout(flushReplies, PHYSICS_INTERVAL_MS)
-  }
   bot._client.on('position', (packet) => {
     // A newer teleport supersedes the one a deferred reply would answer.
     cancelRespawnReply()
-    bot._replyOnNextTick(() => handleTeleport(packet))
-  })
-
-  function handleTeleport (packet) {
     // Is this necessary? Feels like it might wrongly overwrite hitbox size sometimes
     // e.g. when crouching/crawling/swimming. Can someone confirm?
     bot.entity.height = 1.8
@@ -453,6 +426,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
 
     bot.entity.yaw = conv.fromNotchianYaw(newYaw)
     bot.entity.pitch = conv.fromNotchianPitch(newPitch)
+    bot.entity.onGround = false
 
     if (bot.supportFeature('teleportUsesOwnPacket')) {
       bot._client.write('teleport_confirm', { teleportId: packet.teleportId })
@@ -487,7 +461,7 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
     lastSentPitch = bot.entity.pitch
 
     bot.emit('forcedMove')
-  }
+  })
 
   bot.waitForTicks = async function (ticks) {
     if (ticks <= 0) return
@@ -535,9 +509,6 @@ function inject (bot, { physicsEnabled, maxCatchupTicks }) {
   bot.on('login', () => {
     shouldUsePhysics = false
     cancelRespawnReply()
-    // A reply still queued here belongs to the world the bot just left, and its id means nothing
-    // to the server it is about to talk to.
-    pendingReplies.length = 0
     if (doPhysicsTimer === null) {
       lastPhysicsFrameTime = performance.now()
       doPhysicsTimer = setInterval(doPhysics, PHYSICS_INTERVAL_MS)

@@ -8,12 +8,7 @@ function inject (bot) {
     SUCCESSFULLY_LOADED: 0,
     DECLINED: 1,
     FAILED_DOWNLOAD: 2,
-    ACCEPTED: 3,
-    // 1.20.3+
-    DOWNLOADED: 4,
-    INVALID_URL: 5,
-    FAILED_RELOAD: 6,
-    DISCARDED: 7
+    ACCEPTED: 3
   }
 
   bot._client.on('add_resource_pack', (data) => { // Emits the same as resource_pack_send but sends uuid rather than hash because that's how active packs are tracked
@@ -21,8 +16,7 @@ function inject (bot) {
     latestUUID = data.uuid
     activeResourcePacks[data.uuid] = data.url
 
-    bot.emit('resourcePack', data.url, data.uuid)
-    autoAcceptResourcePack()
+    autoAcceptResourcePack(bot.emit('resourcePack', data.url, data.uuid))
   })
 
   bot._client.on('remove_resource_pack', (data) => { // Doesn't emit  anything because it is removing rather than adding
@@ -40,47 +34,67 @@ function inject (bot) {
   })
 
   bot._client.on('resource_pack_send', (data) => {
+    let hadListener
     if (bot.supportFeature('resourcePackUsesUUID')) {
-      bot.emit('resourcePack', data.uuid, data.url)
+      hadListener = bot.emit('resourcePack', data.uuid, data.url)
       latestUUID = data.uuid
     } else {
-      bot.emit('resourcePack', data.url, data.hash)
+      hadListener = bot.emit('resourcePack', data.url, data.hash)
       latestHash = data.hash
     }
-    autoAcceptResourcePack()
+    autoAcceptResourcePack(hadListener)
   })
 
   // A pack must be answered: the server holds the configuration phase (e.g. a Velocity
   // transfer) open until it is, and proxies that move players through a play-phase pack
   // drop an unanswered connection. Play-phase packs are left to a resourcePack listener
-  // when one exists so it can still deny.
-  function autoAcceptResourcePack () {
-    if (bot._client.state === 'configuration' || bot.listenerCount('resourcePack') === 0) {
+  // when one exists so it can still deny. hadListener is emit's return value: a once()
+  // listener is already removed by the time emit returns, so listenerCount would miss it.
+  function autoAcceptResourcePack (hadListener) {
+    if (bot._client.state === 'configuration' || !hadListener) {
       acceptResourcePack()
     }
   }
 
-  function sendResourcePackResult (result) {
-    const packet = { result }
-    if (bot.supportFeature('resourcePackUsesHash')) {
-      packet.hash = latestHash
-    } else if (bot.supportFeature('resourcePackUsesUUID')) {
-      packet.uuid = latestUUID
-    }
-    bot._client.write('resource_pack_receive', packet)
-  }
-
-  // Results must be sent in the order ACCEPTED, DOWNLOADED (1.20.3+), SUCCESSFULLY_LOADED
   function acceptResourcePack () {
-    sendResourcePackResult(TEXTURE_PACK_RESULTS.ACCEPTED)
-    if (bot.supportFeature('resourcePackUsesUUID')) {
-      sendResourcePackResult(TEXTURE_PACK_RESULTS.DOWNLOADED)
+    if (bot.supportFeature('resourcePackUsesHash')) {
+      bot._client.write('resource_pack_receive', {
+        result: TEXTURE_PACK_RESULTS.ACCEPTED,
+        hash: latestHash
+      })
+      bot._client.write('resource_pack_receive', {
+        result: TEXTURE_PACK_RESULTS.SUCCESSFULLY_LOADED,
+        hash: latestHash
+      })
+    } else if (bot.supportFeature('resourcePackUsesUUID')) {
+      bot._client.write('resource_pack_receive', {
+        uuid: latestUUID,
+        result: TEXTURE_PACK_RESULTS.ACCEPTED
+      })
+      bot._client.write('resource_pack_receive', {
+        uuid: latestUUID,
+        result: TEXTURE_PACK_RESULTS.SUCCESSFULLY_LOADED
+      })
+    } else {
+      bot._client.write('resource_pack_receive', {
+        result: TEXTURE_PACK_RESULTS.ACCEPTED
+      })
+      bot._client.write('resource_pack_receive', {
+        result: TEXTURE_PACK_RESULTS.SUCCESSFULLY_LOADED
+      })
     }
-    sendResourcePackResult(TEXTURE_PACK_RESULTS.SUCCESSFULLY_LOADED)
   }
 
   function denyResourcePack () {
-    sendResourcePackResult(TEXTURE_PACK_RESULTS.DECLINED)
+    if (bot.supportFeature('resourcePackUsesUUID')) {
+      bot._client.write('resource_pack_receive', {
+        uuid: latestUUID,
+        result: TEXTURE_PACK_RESULTS.DECLINED
+      })
+    }
+    bot._client.write('resource_pack_receive', {
+      result: TEXTURE_PACK_RESULTS.DECLINED
+    })
   }
 
   bot.acceptResourcePack = acceptResourcePack

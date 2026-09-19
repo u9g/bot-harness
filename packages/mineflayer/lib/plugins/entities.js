@@ -1,7 +1,7 @@
 const { Vec3 } = require('vec3')
 const conv = require('../conversions')
 const mojangson = require('mojangson')
-const { attributeValue } = require('../attributes')
+const { onceWithCleanup } = require('../promise_utils')
 // These values are only accurate for versions 1.14 and above (crouch hitbox changes)
 // Todo: hitbox sizes for sleeping, swimming/crawling, and flying with elytra
 const PLAYER_HEIGHT = 1.8
@@ -111,9 +111,6 @@ function inject (bot) {
     bot.entity.height = PLAYER_HEIGHT
     bot.entity.width = PLAYER_WIDTH
     bot.entity.eyeHeight = PLAYER_EYEHEIGHT
-    // A player that has just been added to the world is airborne until a tick of physics
-    // says otherwise (Entity.onGround starts false); prismarine-entity defaults it to true.
-    bot.entity.onGround = false
   })
 
   bot._client.on('entity_equipment', (packet) => {
@@ -355,20 +352,40 @@ function inject (bot) {
   // 1.21.2+: same layout as the player position packet, each part absolute or relative per flag
   function handleEntityTeleportRelative (packet) {
     const entity = fetchEntity(packet.entityId)
-    const { position: pos, velocity: vel, yaw, pitch } = entity
+    const { position: pos, velocity: vel } = entity
+    const oldYaw = conv.toNotchianYaw(entity.yaw)
+    const oldPitch = conv.toNotchianPitch(entity.pitch)
+    const newYaw = (packet.flags.yaw ? oldYaw : 0) + packet.yaw
+    const newPitch = (packet.flags.pitch ? oldPitch : 0) + packet.pitch
     pos.set(
       packet.flags.x ? pos.x + packet.x : packet.x,
       packet.flags.y ? pos.y + packet.y : packet.y,
       packet.flags.z ? pos.z + packet.z : packet.z
     )
+    // A dx/dy/dz flag adds the current velocity to the packet's; yawDelta first turns the
+    // current velocity by the rotation change.
+    const v = packet.flags.yawDelta
+      ? rotateVelocity(vel, (oldPitch - newPitch) * Math.PI / 180, (oldYaw - newYaw) * Math.PI / 180)
+      : vel.clone()
     vel.set(
-      packet.flags.dx ? vel.x + packet.dx : packet.dx,
-      packet.flags.dy ? vel.y + packet.dy : packet.dy,
-      packet.flags.dz ? vel.z + packet.dz : packet.dz
+      (packet.flags.dx ? v.x : 0) + packet.dx,
+      (packet.flags.dy ? v.y : 0) + packet.dy,
+      (packet.flags.dz ? v.z : 0) + packet.dz
     )
-    entity.yaw = conv.fromNotchianYaw((packet.flags.yaw ? conv.toNotchianYaw(yaw) : 0) + packet.yaw)
-    entity.pitch = conv.fromNotchianPitch((packet.flags.pitch ? conv.toNotchianPitch(pitch) : 0) + packet.pitch)
+    entity.yaw = conv.fromNotchianYaw(newYaw)
+    entity.pitch = conv.fromNotchianPitch(newPitch)
     bot.emit('entityMoved', entity)
+  }
+
+  // Vanilla Vec3.xRot then Vec3.yRot, angles in radians.
+  function rotateVelocity (v, pitchDelta, yawDelta) {
+    const cp = Math.cos(pitchDelta)
+    const sp = Math.sin(pitchDelta)
+    const y = v.y * cp + v.z * sp
+    const z = v.z * cp - v.y * sp
+    const cy = Math.cos(yawDelta)
+    const sy = Math.sin(yawDelta)
+    return new Vec3(v.x * cy + z * sy, y, z * cy - v.x * sy)
   }
 
   bot._client.on('entity_teleport', bot.supportFeature('entityTeleportHasRelativeFlags') ? handleEntityTeleportRelative : handleEntityTeleportLegacy)
@@ -824,6 +841,15 @@ function inject (bot) {
         bot.vehicle = bot.entities[entityId]
         bot.emit('mount')
       }
+    } else if (bot.vehicle && bot.vehicle.id === entityId) {
+      // The server announces a dismount as the vehicle's new passenger list,
+      // which no longer includes the bot
+      const originalVehicle = bot.vehicle
+      const index = originalVehicle.passengers.indexOf(bot.entity)
+      if (index !== -1) originalVehicle.passengers.splice(index, 1)
+      bot.entity.vehicle = null
+      bot.vehicle = null
+      bot.emit('dismount', originalVehicle)
     }
   })
 
@@ -907,12 +933,15 @@ function inject (bot) {
     }
     if (bot.supportFeature('newPlayerInputPacket')) {
       // Only the shift key in player_input dismounts (Player.rideTick); the jump
-      // flag is never read for this
+      // flag is never read for this. physicsTick does not run while mounted, so
+      // hold sneak until the server reports the dismount rather than for a tick
+      const wasSneaking = bot.getControlState('sneak')
+      const dismounted = onceWithCleanup(bot, 'dismount', { timeout: 5000 })
       bot.setControlState('sneak', true)
       try {
-        await bot.waitForTicks(1)
+        await dismounted
       } finally {
-        bot.setControlState('sneak', false)
+        bot.setControlState('sneak', wasSneaking)
       }
     } else {
       bot._client.write('steer_vehicle', {
@@ -921,43 +950,6 @@ function inject (bot) {
         jump: 0x02 // unmount flag
       })
     }
-  }
-
-  // Vanilla Player.DEFAULT_ENTITY_INTERACTION_RANGE / DEFAULT_BLOCK_INTERACTION_RANGE. From
-  // 1.20.5 the server sends the live values as attributes (creative adds to both), and mineflayer
-  // already folds entity_update_attributes into entity.attributes.
-  const DEFAULT_ENTITY_INTERACTION_RANGE = 3.0
-  const DEFAULT_BLOCK_INTERACTION_RANGE = 4.5
-
-  bot.entityInteractionRange = () => attributeValue(bot.entity, 'entity_interaction_range', DEFAULT_ENTITY_INTERACTION_RANGE)
-  bot.blockInteractionRange = () => attributeValue(bot.entity, 'block_interaction_range', DEFAULT_BLOCK_INTERACTION_RANGE)
-
-  // Player.isWithinEntityInteractionRange: the squared distance from the eye to the target's
-  // bounding box, not centre to centre. `buffer` is the slack the server allows itself (3.0 in
-  // ServerGamePacketListenerImpl); leave it at 0 to ask what the client could have aimed at.
-  function distanceToBoxSq (eye, min, max) {
-    const dx = Math.max(min.x - eye.x, 0, eye.x - max.x)
-    const dy = Math.max(min.y - eye.y, 0, eye.y - max.y)
-    const dz = Math.max(min.z - eye.z, 0, eye.z - max.z)
-    return dx * dx + dy * dy + dz * dz
-  }
-
-  bot.canInteractWithEntity = (entity, buffer = 0) => {
-    if (!entity || !bot.entity) return false
-    const eye = bot.entity.position.offset(0, bot.entity.eyeHeight ?? 1.62, 0)
-    const halfWidth = (entity.width ?? 0.6) / 2
-    const min = entity.position.offset(-halfWidth, 0, -halfWidth)
-    const max = entity.position.offset(halfWidth, entity.height ?? 1.8, halfWidth)
-    const range = bot.entityInteractionRange() + buffer
-    return distanceToBoxSq(eye, min, max) < range * range
-  }
-
-  // Player.isWithinBlockInteractionRange: the eye against the block's own unit cube.
-  bot.canInteractWithBlock = (block, buffer = 0) => {
-    if (!block || !bot.entity) return false
-    const eye = bot.entity.position.offset(0, bot.entity.eyeHeight ?? 1.62, 0)
-    const range = bot.blockInteractionRange() + buffer
-    return distanceToBoxSq(eye, block.position, block.position.offset(1, 1, 1)) < range * range
   }
 
   function fetchEntity (id) {

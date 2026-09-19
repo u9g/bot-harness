@@ -37,12 +37,11 @@ function inject (bot) {
 
     if (type === 'boat') {
       if (bot.supportFeature('useItemWithOwnPacket')) {
-        // Same payload as bot.activateItem(): 1.19 added the prediction sequence and 1.21.2 the
-        // rotation, and leaving either out makes the serializer throw, which ends the connection.
+        // The same use_item as bot.activateItem(), so it takes the next shared sequence value
         bot._client.write('use_item', {
           hand: options.offhand ? 1 : 0,
-          sequence: 0, // 1.19.0+, as in generic_place
-          rotation: {
+          sequence: bot._nextSequence(), // 1.19.0+
+          rotation: { // 1.21.2+
             x: toNotchianYaw(bot.entity.yaw),
             y: toNotchianPitch(bot.entity.pitch)
           }
