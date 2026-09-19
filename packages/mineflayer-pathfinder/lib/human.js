@@ -56,6 +56,9 @@ const horiz = (v) => Math.hypot(v.x, v.z)
 function createHuman (bot, opts = {}) {
   const r = rng(opts.seed ?? (Date.now() ^ (Math.random() * 2 ** 31)))
   const personality = makePersonality(r, opts.personality ?? {})
+  // `trip` forced moves within `window` ms hold the controller for `hold` ms; the hold ends only
+  // after `quiet` ms without a forced move and with the bot on the ground.
+  const setback = opts.setback === false ? null : { trip: 3, window: 2500, hold: 8000, quiet: 3000, ...(opts.setback ?? {}) }
   if (!bot.pathfinder) bot.loadPlugin(require('../index').pathfinder)
 
   // Head state, radians, mineflayer convention (yaw = atan2(-dx, -dz), pitch positive up).
@@ -77,8 +80,12 @@ function createHuman (bot, opts = {}) {
   let stuckJumpAt = 0
   let strafeUntil = 0
   let strafeDir = 'left'
+  const forcedMoveAt = []
+  let lastForcedMoveAt = 0
+  let heldUntil = 0
+  let trips = 0 // guard trips so far; a look that spans one ends with 'setback'
 
-  const human = { personality, route: [], walkTo, lookAt, bridgeTo, placeAhead, stop, active: true }
+  const human = { personality, route: [], walkTo, lookAt, stop, active: true, get held () { return heldUntil > 0 } }
 
   function movements () {
     if (opts.movements) return opts.movements
@@ -257,6 +264,7 @@ function createHuman (bot, opts = {}) {
     const speed = horiz(bot.entity.velocity)
     const moving = speed > 0.03
 
+    if (heldUntil > 0 && now >= heldUntil && now - lastForcedMoveAt >= setback.quiet && bot.entity.onGround) heldUntil = 0
     if (walk) tickWalk(walk, now, pos, speed)
     stepHead(moving)
     if (jumpHeld > 0 && --jumpHeld === 0) bot.setControlState('jump', false)
@@ -414,22 +422,17 @@ function createHuman (bot, opts = {}) {
     w.reject(e)
   }
 
-  // Resolves once the head has stopped moving for `ms`. The head only moves on a physics tick, so the
-  // wait is also capped on wall clock: a kick, an unloaded chunk or physicsEnabled = false ends the
-  // tick stream, and a caller awaiting the head would otherwise never be answered at all.
-  function settled (ms, cap = ms + 2000) {
+  // Resolves once the head has stopped moving for `ms`.
+  function settled (ms) {
     return new Promise(resolve => {
       let quietSince = Date.now()
-      const done = () => {
-        clearTimeout(timer)
-        bot.off('physicsTick', check)
-        resolve()
-      }
       const check = () => {
         if (lastRotationDelta > 0.02 * DEG) quietSince = Date.now()
-        if (Date.now() - quietSince >= ms) done()
+        if (Date.now() - quietSince >= ms) {
+          bot.off('physicsTick', check)
+          resolve()
+        }
       }
-      const timer = setTimeout(done, cap)
       bot.on('physicsTick', check)
     })
   }
@@ -469,10 +472,12 @@ function createHuman (bot, opts = {}) {
 
   async function startWalk (goal, o) {
     requirePhysics('walkTo')
+    if (heldUntil > 0) throw new Error('setback')
     if (walk) failWalk(walk, new Error('superseded'))
     const seq = ++planSeq
     const plan = await planRoute(goal, () => seq === planSeq)
     if (seq !== planSeq) throw new Error('superseded')
+    if (heldUntil > 0) throw new Error('setback')
     if (!plan) throw new Error(`no path to ${goal}`)
     const { route, complete } = plan
     return new Promise((resolve, reject) => {
@@ -503,130 +508,16 @@ function createHuman (bot, opts = {}) {
 
   async function lookAt (point, o = {}) {
     requirePhysics('lookAt')
+    if (heldUntil > 0) throw new Error('setback')
+    const trip = trips
     await new Promise(resolve => setTimeout(resolve, personality.reaction * 1000 * (0.5 + r())))
+    // The guard may have tripped during the reaction delay: the head it released stays released.
+    if (trips !== trip || heldUntil > 0) throw new Error('setback')
     targetYaw = yawTo(bot.entity.position, point)
     targetPitch = pitchTo(bot.entity.position, point)
     await settled(o.settleMs ?? 300)
+    if (trips !== trip) throw new Error('setback')
     releaseHead()
-  }
-
-  // Bridging.
-  //
-  // The block a bridge extends from is the one under the bot's feet, and the face to click is one of
-  // its sides. From on top of that block no such face is in view: the ray from the eye to any point
-  // on a side face passes through the block's own top face first, so a vanilla client's crosshair
-  // reports the top face and never the side. A placement that claims the side anyway is a packet no
-  // client can produce, and a server that checks the hit drops it without a word.
-  //
-  // Players get the face in view by sneaking: the hitbox may hang over the lip, which puts the eye
-  // horizontally outside the block's column, and from there the side face is the first thing the ray
-  // meets. So that is the move — sneak to the lip, click, step on.
-
-  function tickPassed () {
-    return new Promise(resolve => bot.once('physicsTick', resolve))
-  }
-
-  // The block to build with: the caller's, else the first full cube in the inventory.
-  function buildItem (o) {
-    const items = bot.inventory.items()
-    if (o.item) return items.find(i => i.name === o.item) ?? null
-    return items.find(i => bot.registry.blocksByName[i.name]?.boundingBox === 'block') ?? null
-  }
-
-  // Sneak forward until the bot stops moving: sneaking holds it at the lip on its own, so there is
-  // no offset to compute and nothing to fall off.
-  async function toLip (dir, ms) {
-    bot.setControlState('sneak', true)
-    const pos = bot.entity.position
-    targetYaw = yawTo(pos, pos.plus(dir))
-    targetPitch = pitchTo(pos, pos.plus(dir).offset(0, -1, 0))
-    await settled(120)
-    bot.setControlState('forward', true)
-    const until = Date.now() + ms
-    let last = bot.entity.position.clone()
-    let still = 0
-    while (Date.now() < until) {
-      await tickPassed()
-      const p = bot.entity.position
-      still = horiz(p.minus(last)) < 0.004 ? still + 1 : 0
-      last = p.clone()
-      if (still >= 3) break
-    }
-    bot.setControlState('forward', false)
-  }
-
-  // Lay the next block of a bridge: the one beside the block under the bot, on the `dir` side.
-  async function placeAhead (dir, o = {}) {
-    const support = bot.blockAt(bot.entity.position.offset(0, -1, 0))
-    if (!support || support.boundingBox !== 'block') throw new Error('nothing under the bot to build from')
-    const dest = support.position.plus(dir)
-    if (solid(dest)) return dest
-    const item = buildItem(o)
-    if (!item) throw new Error('no block to build with')
-    if (bot.heldItem?.name !== item.name) await bot.equip(item, 'hand')
-    try {
-      await toLip(dir, o.lipMs ?? 900)
-      // The middle of the clicked face, which is the point the placement reports.
-      const face = support.position.offset(0.5 + dir.x * 0.5, 0.5, 0.5 + dir.z * 0.5)
-      targetYaw = yawTo(bot.entity.position, face)
-      targetPitch = pitchTo(bot.entity.position, face)
-      await settled(o.settleMs ?? 200)
-      releaseHead()
-      // The head is already where the packet says it is, so mineflayer must not re-aim it.
-      await bot._placeBlockWithOptions(support, dir, { forceLook: 'ignore', swingArm: 'right' })
-    } finally {
-      bot.setControlState('sneak', false)
-    }
-    return dest
-  }
-
-  // Walk onto a block, one step, without planning a route over ground that is still being built.
-  async function stepOnto (block, ms) {
-    const target = new Vec3(block.x + 0.5, block.y, block.z + 0.5)
-    targetYaw = yawTo(bot.entity.position, target)
-    targetPitch = pitchTo(bot.entity.position, target.offset(0, 1, 0))
-    await settled(120)
-    bot.setControlState('forward', true)
-    const until = Date.now() + ms
-    let arrived = false
-    while (Date.now() < until) {
-      await tickPassed()
-      const p = bot.entity.position
-      if (Math.abs(p.x - target.x) < 0.3 && Math.abs(p.z - target.z) < 0.3) { arrived = true; break }
-    }
-    bot.setControlState('forward', false)
-    releaseHead()
-    return arrived
-  }
-
-  // Bridge toward a goal, one block at a time, along whichever axis is furthest from it. Ground that
-  // is already there is walked over; anything else is built. The bot keeps its own feet level.
-  async function bridgeTo (goal, o = {}) {
-    if (walk) failWalk(walk, new Error('superseded'))
-    const radius = o.radius ?? 1
-    const max = o.blocks ?? 256
-    for (let n = 0; n < max; n++) {
-      if (!human.active) throw new Error('stopped')
-      const pos = bot.entity.position
-      if (horiz(goal.minus(pos)) <= radius) return
-      const dx = goal.x - pos.x
-      const dz = goal.z - pos.z
-      const dir = Math.abs(dx) >= Math.abs(dz) ? new Vec3(Math.sign(dx), 0, 0) : new Vec3(0, 0, Math.sign(dz))
-      if (dir.x === 0 && dir.z === 0) return
-      const feet = pos.floored()
-      const ahead = feet.plus(dir)
-      if (!passable(ahead) || !passable(ahead.offset(0, 1, 0))) throw new Error(`${ahead} is in the way`)
-      // Ground the bot can step or drop down onto is walked over; only a real gap is built across,
-      // and only there does sneaking hold the bot at a lip with the face in view.
-      const below = ahead.offset(0, -1, 0)
-      const footing = [0, 1, 2, 3].some(d => solid(below.offset(0, -d, 0)))
-      if (!footing) await placeAhead(dir, o)
-      if (!await stepOnto(ahead, o.stepMs ?? 1600)) {
-        // Standing over the lip leaves the feet in the block behind; back onto its middle and retry.
-        if (!await stepOnto(feet, o.stepMs ?? 1600)) throw new Error(`stuck bridging at ${bot.entity.position}`)
-      }
-    }
-    throw new Error(`${max} blocks was not enough to reach ${goal}`)
   }
 
   // The head holds a target only while it is being aimed: once it has arrived, a rotation the
@@ -650,6 +541,16 @@ function createHuman (bot, opts = {}) {
     yaw = bot.entity.yaw
     pitch = bot.entity.pitch
     gesture = null
+    if (setback === null) return
+    const now = Date.now()
+    lastForcedMoveAt = now
+    forcedMoveAt.push(now)
+    while (now - forcedMoveAt[0] > setback.window) forcedMoveAt.shift()
+    if (forcedMoveAt.length < setback.trip) return
+    heldUntil = Math.max(heldUntil, now + setback.hold)
+    trips++
+    if (walk) failWalk(walk, new Error('setback'))
+    releaseHead()
   })
   return human
 }
