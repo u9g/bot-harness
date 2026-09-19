@@ -3,24 +3,10 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "08a8e3a5f69d82471045cd2bd325638f6795b515",
-      "tip": "63ff17afb96fec5abc2865f5a4be7461d9c2f02b",
+      "baseSha": "f59168c3ce23158527ea7c3743ac16f18f96cf25",
+      "tip": "19a65a3bc4767697747a163f9f6eb6e5954063a0",
       "tree": "12bbe65c3972c93f9e19668d95542d2bdae11d38",
       "prs": [
-        {
-          "number": 1278,
-          "title": "pc/26.1: map every InteractionHand field to main_hand/off_hand",
-          "head": "237e8a866292cf550dac4fc9ca120aa20af86424",
-          "mergeBase": "08a8e3a5f69d82471045cd2bd325638f6795b515",
-          "status": "applied"
-        },
-        {
-          "number": 1283,
-          "title": "Regenerate pc 1.10, 1.11 and 1.12 recipes from the game",
-          "head": "633c362266093348f056f7633a037f4b3438be93",
-          "mergeBase": "3d75720098b35bdacaa9a6ba56bb9f53e93a9a66",
-          "status": "applied"
-        },
         {
           "number": 1292,
           "title": "Revert the 1.21.6 enum mappers whose ordinals never moved",
@@ -96,7 +82,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "0ebdd5120eca8840e3ffd6597cd4e83732b59c9a",
-      "tip": "52aeb30fe92b524864248ece52467e04aaef388e",
+      "tip": "52457faf87335d8c39e54c564f24eaf823cfe8f2",
       "tree": "b54d70866048041a000a1b1a451281f652ee702b",
       "prs": [
         {
@@ -126,7 +112,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "fa95d8584d727fc957a87f4776b2aa90b6bf596a",
-      "tip": "9fac05c58739c2c567b828fe513398a662f59f0c",
+      "tip": "ab0ac865d50b5a4c62a6d6d9cb17bf49b3eac489",
       "tree": "3a86f00b7775a837906ef2139b4458bb8fb50c3c",
       "prs": [
         {
@@ -157,7 +143,7 @@
       "repo": "PrismarineJS/prismarine-physics",
       "base": "master",
       "baseSha": "a5353a922f1dee075aa797cb53be31919f9e1f46",
-      "tip": "065fc52a7082e5538f9f6df3c0a51fcceb7e90c3",
+      "tip": "cd7d686694b7d253a42d253f17df4309e221abe0",
       "tree": "32f0474510890984c5f36c5cee4f2a9a0778fa30",
       "prs": [
         {
@@ -173,7 +159,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
-      "tip": "959b4413fd03ca9ed3a89fe6e01b4399436b10ff",
+      "tip": "79bb3f177aaf2b203e5981e5d99564551457d560",
       "tree": "eb0779a85142bcbfcade1af2808f2fd548d7d8a3",
       "prs": [
         {
@@ -382,7 +368,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "5872016d3251050b119c4d4c903bccd2d05f62df",
-      "tip": "64a62875eec9d5ddc4a96a3494157329e013a52c",
+      "tip": "4e1db3cfa998024c5876971ad23e6d7a80463ce8",
       "tree": "8a0fdc627bbb741380316ea9246fdd7856ff0b44",
       "prs": [
         {
@@ -414,7 +400,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
-      "tip": "6332f876ef49f743cf968da36ccf119cd272c09d",
+      "tip": "b852fe5468a69418bbed1d046d09b57468ba85ef",
       "tree": "82c17ae0e1876fe360f355af3e10f2788dd55b5c",
       "prs": [
         {
