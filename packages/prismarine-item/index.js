@@ -1,42 +1,16 @@
 const nbt = require('prismarine-nbt')
 const hashedSlotLoader = require('./lib/hashedSlot')
 
-// Strips prismarine-nbt wrappers down to plain JS values; every nbt tag arrives as {type, value}.
-function nbtValue (v) {
-  if (v == null || typeof v !== 'object') return v
-  if (Array.isArray(v)) return v.map(nbtValue)
-  if (typeof v.type === 'string' && 'value' in v) return nbtValue(v.value)
-  const out = {}
-  for (const k of Object.keys(v)) out[k] = nbtValue(v[k])
-  return out
-}
-
-function safeJson (s) {
-  try { return JSON.parse(s) } catch { return s }
-}
-
-// Plain text of a chat component (an NBT compound/value, a parsed JSON object, a JSON string, or a
-// plain string); returns null when the input holds no component at all.
-function chatToText (c) {
-  if (c == null) return null
-  const v = nbtValue(typeof c === 'string' ? safeJson(c) : c)
-  if (typeof v === 'string') return v
-  if (Array.isArray(v)) return v.map(x => chatToText(x) ?? '').join('')
-  if (typeof v !== 'object' || v === null) return null
-  let out = ''
-  if (typeof v.text === 'string') out += v.text
-  if (v.extra != null) out += chatToText(v.extra) ?? ''
-  return out
-}
-
 // 1.20.5 moved the custom name and the lore into data components, which carry a chat component as
 // NBT; the display.Name and display.Lore tags they replaced carried the same component as the JSON
 // string the server wrote. Read the NBT back as that string so customName and customLore have one
-// shape on every version, the one index.d.ts promises.
+// shape on every version, the one index.d.ts promises. A JS string is already that JSON (the setters
+// store one), but an NBT string tag is the literal text, so it is quoted like any other component:
+// nbt.string('{"text":"Hello"}') is the text {"text":"Hello"}, not a component that renders Hello.
 function chatComponentJson (component) {
   if (component == null || typeof component === 'string') return component
   const value = typeof component.type === 'string' && 'value' in component ? nbt.simplify(component) : component
-  return typeof value === 'string' ? value : JSON.stringify(value)
+  return JSON.stringify(value)
 }
 
 function loader (registryOrVersion) {
@@ -85,8 +59,6 @@ function loader (registryOrVersion) {
           if (variation) this.displayName = variation.displayName
         }
 
-        this.applyCustomName()
-
         // Can't initialize fields if the item was sent by the server
         if (!sentByServer) {
           // The 'itemEnum.maxDurability' checks to see if this item can lose durability
@@ -97,14 +69,6 @@ function loader (registryOrVersion) {
         this.displayName = 'unknown'
         this.stackSize = 1
       }
-    }
-
-    // Vanilla renders an item's custom name (1.20.5+ `custom_name` component, NBT `display.Name`
-    // before that) everywhere the item's name is shown, so displayName reflects it too: the plain
-    // text of the chat component, falling back to the item's own display name.
-    applyCustomName () {
-      const text = chatToText(this.customName)
-      if (text !== null) this.displayName = text
     }
 
     static equal (item1, item2, matchStackSize = true, matchNbt = true) {
@@ -229,7 +193,6 @@ function loader (registryOrVersion) {
               if (component.type === 'custom_data') item.nbt = component.data
             }
           }
-          item.applyCustomName()
           return item
         } else if (registry.supportFeature('itemSerializationWillOnlyUsePresent')) {
           return new Item(networkItem.itemId, networkItem.itemCount, networkItem.nbtData, null, true)
@@ -270,13 +233,11 @@ function loader (registryOrVersion) {
     set customName (newName) {
       if (this.componentMap) {
         this.componentMap.set('custom_name', { type: 'custom_name', data: newName })
-        this.applyCustomName()
         return
       }
       if (!this.nbt) this.nbt = nbt.comp({})
       if (!this.nbt.value.display) this.nbt.value.display = { type: 'compound', value: {} }
       this.nbt.value.display.value.Name = nbt.string(newName)
-      this.applyCustomName()
     }
 
     get customLore () {
