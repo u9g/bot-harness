@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "f59168c3ce23158527ea7c3743ac16f18f96cf25",
-      "tip": "886bc82e9c89101d83db5071d97e8a73d1c191d7",
+      "tip": "ba4a70fe714b4958ad4b45e4fe235351f41f45fa",
       "tree": "12bbe65c3972c93f9e19668d95542d2bdae11d38",
       "prs": [
         {
@@ -82,7 +82,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "0ebdd5120eca8840e3ffd6597cd4e83732b59c9a",
-      "tip": "58d94aa921e2736995a82a86dd1876e0096a4931",
+      "tip": "eff51a65c97acf4e4bf5432917c621c64375d4f0",
       "tree": "b54d70866048041a000a1b1a451281f652ee702b",
       "prs": [
         {
@@ -112,7 +112,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "fa95d8584d727fc957a87f4776b2aa90b6bf596a",
-      "tip": "228b829752249cc1b62fa47f666261c75123a3a3",
+      "tip": "1656a505d109580912a4847a1afc6496945ae612",
       "tree": "3a86f00b7775a837906ef2139b4458bb8fb50c3c",
       "prs": [
         {
@@ -143,7 +143,7 @@
       "repo": "PrismarineJS/prismarine-physics",
       "base": "master",
       "baseSha": "a5353a922f1dee075aa797cb53be31919f9e1f46",
-      "tip": "8a317762e29578363f574241d4011fc756971a87",
+      "tip": "46af4f4a866590063ba4501ca9374b07c1b8f5b1",
       "tree": "32f0474510890984c5f36c5cee4f2a9a0778fa30",
       "prs": [
         {
@@ -159,7 +159,7 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
-      "tip": "791244b8e36c7cc5d7e496ac1dfd2b2a5159e7a3",
+      "tip": "cee03e24e3925ff33a8bfc7117022bcbc1454d00",
       "tree": "eb0779a85142bcbfcade1af2808f2fd548d7d8a3",
       "prs": [
         {
@@ -368,7 +368,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "5872016d3251050b119c4d4c903bccd2d05f62df",
-      "tip": "03ff676abc40ea0cba1cd4d38526b623f35c3797",
+      "tip": "a10229dd71d05d7e0ef222530eb7d637a5681f41",
       "tree": "8a0fdc627bbb741380316ea9246fdd7856ff0b44",
       "prs": [
         {
@@ -400,7 +400,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
-      "tip": "472feb7038d76cfad33d05eea28ceec791b6abcc",
+      "tip": "5d47c5cd6a69745f7b89d0a1d0096be7cdf454b1",
       "tree": "82c17ae0e1876fe360f355af3e10f2788dd55b5c",
       "prs": [
         {
