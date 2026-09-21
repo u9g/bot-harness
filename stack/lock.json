@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "f59168c3ce23158527ea7c3743ac16f18f96cf25",
-      "tip": "6f0272b7791a61fd4b5f751c3dfe0d899575a70f",
+      "tip": "fac065f3f4a9c7a79979d5a9d943fbf8790b5563",
       "tree": "12bbe65c3972c93f9e19668d95542d2bdae11d38",
       "prs": [
         {
@@ -111,8 +111,8 @@
     "prismarine-item": {
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
-      "baseSha": "fa95d8584d727fc957a87f4776b2aa90b6bf596a",
-      "tip": "0363f657ee48460720acd6d3b03f75c08395aa8b",
+      "baseSha": "19bface97e73b09f24c613ab6ab46953dd22b7c0",
+      "tip": "27420048b2d4ba3130073de011710b1aef140d93",
       "tree": "3a86f00b7775a837906ef2139b4458bb8fb50c3c",
       "prs": [
         {
@@ -129,38 +129,23 @@
           "mergeBase": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
           "status": "conflict",
           "note": "index.js: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
-          "number": 189,
-          "title": "Read the custom name and lore components as the JSON string they used to be",
-          "head": "4a14d0a93ecdd24b712df8eb41586e936f88313e",
-          "mergeBase": "0f2ee79208a9c9b3e9fb566d55dd77ef5b9add73",
-          "status": "applied"
         }
       ]
     },
     "prismarine-physics": {
       "repo": "PrismarineJS/prismarine-physics",
       "base": "master",
-      "baseSha": "a5353a922f1dee075aa797cb53be31919f9e1f46",
-      "tip": "46af4f4a866590063ba4501ca9374b07c1b8f5b1",
+      "baseSha": "5a46cc9d0222543d1693063d0726b8d3096255f2",
+      "tip": "5a46cc9d0222543d1693063d0726b8d3096255f2",
       "tree": "32f0474510890984c5f36c5cee4f2a9a0778fa30",
-      "prs": [
-        {
-          "number": 142,
-          "title": "Obey the flight the server grants in the abilities packet",
-          "head": "bb4b53b765a27a6a5e58b7fe44232eb4dcc4eb66",
-          "mergeBase": "a5353a922f1dee075aa797cb53be31919f9e1f46",
-          "status": "applied"
-        }
-      ]
+      "prs": []
     },
     "mineflayer": {
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
-      "baseSha": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
-      "tip": "395b55505ff9d8ee46d039a04f7487bf5e1fd236",
-      "tree": "d4b921dd241a8e679d90fec471194284d98a0c66",
+      "baseSha": "4fb62af5f8807adbf0c76c3d91221be246f40e8b",
+      "tip": "80068bc71a2a32625271fa16e230ecca70a3643b",
+      "tree": "6ec070b338966efff3f88a5c70ede7cef8b8fd3e",
       "prs": [
         {
           "number": 4021,
@@ -228,13 +213,6 @@
           "status": "applied"
         },
         {
-          "number": 4085,
-          "title": "use_item and use_item_on like the vanilla client: shared prediction sequence, cursor on the clicked face, no empty-hand use, swing after the packet",
-          "head": "63411b675ca84291c394e42b6a71af32601ceb9a",
-          "mergeBase": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
-          "status": "applied"
-        },
-        {
           "number": 4086,
           "title": "Send the client_command respawn after win_game with the actionId field",
           "head": "02bc8ced4f231e5baf7fdfe525a7c1d6e793bd22",
@@ -276,7 +254,8 @@
           "title": "Window state across close, re-login and respawn: stateId per window, close_window on respawn, closeWindow(null)",
           "head": "5d4dab47f3bfe1f414222cd6c1d39b8b234c6107",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "resolved-rerere"
+          "status": "conflict",
+          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4104,
@@ -284,14 +263,6 @@
           "head": "5bd171cc13e210bba36caee1ef3d4e2a84d319bd",
           "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
           "status": "applied"
-        },
-        {
-          "number": 4107,
-          "title": "fix: answer pings and teleports at the start of the next tick, in arrival order",
-          "head": "e09ad6bc585aecbef5897111c8d71574c8797ccc",
-          "mergeBase": "2084d0e6e0224fac30ba55d9cae7cfcd17cc9d65",
-          "status": "conflict",
-          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4108,
@@ -367,8 +338,8 @@
     "mineflayer-pathfinder": {
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
-      "baseSha": "5872016d3251050b119c4d4c903bccd2d05f62df",
-      "tip": "6297b1aea1637065a72b0678b4a5c2ade79437b8",
+      "baseSha": "6f5c26bf79e7861d20e0fbc735059db51e4d8f77",
+      "tip": "6f5c26bf79e7861d20e0fbc735059db51e4d8f77",
       "tree": "8a0fdc627bbb741380316ea9246fdd7856ff0b44",
       "prs": [
         {
@@ -377,14 +348,7 @@
           "head": "e5fbd00f240a150bb2ad9a366704e4a4f08065b9",
           "mergeBase": "d575007ecd6a7d3006ae2c06b4c1b8bf2bb855b2",
           "status": "conflict",
-          "note": "readme.md: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
-          "number": 379,
-          "title": "createHuman: hold the controller through a setback storm",
-          "head": "0e2bf3d11963a606e320127d4089c95844868895",
-          "mergeBase": "5872016d3251050b119c4d4c903bccd2d05f62df",
-          "status": "applied"
+          "note": "lib/human.js, readme.md: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 382,
@@ -399,17 +363,10 @@
     "prismarine-viewer": {
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
-      "baseSha": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
-      "tip": "7328c168788a51c473e17b21a45c149d5deb9d75",
+      "baseSha": "d78e38c4f12bf6f5eda94de1dea413a61c9eb728",
+      "tip": "d78e38c4f12bf6f5eda94de1dea413a61c9eb728",
       "tree": "82c17ae0e1876fe360f355af3e10f2788dd55b5c",
       "prs": [
-        {
-          "number": 484,
-          "title": "Add Minecraft 26.1 support",
-          "head": "6d085381b6458ae44a56e04342e2cad198165853",
-          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "applied"
-        },
         {
           "number": 488,
           "title": "Render negative-Y sections on 1.18+ worlds",
@@ -417,28 +374,6 @@
           "mergeBase": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
           "status": "conflict",
           "note": "test/worldrenderer.test.js, viewer/lib/models.js, viewer/lib/worldrenderer.js: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
-          "number": 503,
-          "title": "Add viewer.waitForReady() for a fully textured first frame",
-          "head": "626ec89ace5a61335017791e1c7e54e1ba2af531",
-          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "conflict",
-          "note": "viewer/lib/entity/Entity.js, viewer/lib/worldrenderer.js: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
-          "number": 506,
-          "title": "Render dropped items",
-          "head": "6f1de51dab8f1efd9d19fca62264956e04457266",
-          "mergeBase": "b03ff13d233e9c2c86d64f64c82b9886e8dd54bf",
-          "status": "applied"
-        },
-        {
-          "number": 513,
-          "title": "Unload chunks the server unloads, and follow the world across a transfer",
-          "head": "3a6c28e9990fb3c6df8675cd5981902066f088c2",
-          "mergeBase": "9e58a658aaeda34a8400210e4f0f583259a33aee",
-          "status": "applied"
         },
         {
           "number": 514,
