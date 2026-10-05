@@ -178,6 +178,10 @@ def Vals.tsize : Vals → Nat
   | .cons v r => v.size + r.tsize
 end
 
+def valInt : Val → Int
+  | .int z => z
+  | _ => 0
+
 /-- number of bytes needed to UTF-8 encode a code point -/
 def utf8Len (cp : Int) : Nat :=
   if cp < 0x80 then 1 else if cp < 0x800 then 2 else if cp < 0x10000 then 3 else 4

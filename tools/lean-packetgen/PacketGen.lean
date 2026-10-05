@@ -4,3 +4,6 @@ import PacketGen.Gen
 import PacketGen.Spec
 import PacketGen.Encode
 import PacketGen.Json
+import PacketGen.Finite
+import PacketGen.DefaultSamples
+import PacketGen.Variants

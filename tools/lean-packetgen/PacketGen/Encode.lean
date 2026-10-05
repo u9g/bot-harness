@@ -42,10 +42,6 @@ def Count.prefix : Count → Nat → List UInt8
   | .prefixed k, n => encodeInt k n
   | _, _ => []
 
-def valInt : Val → Int
-  | .int z => z
-  | _ => 0
-
 def packBits : List (String × Nat × Bool) → List Val → Nat → Nat
   | (_, w, _) :: bs, v :: vs, acc => packBits bs vs (acc * 2 ^ w + twos w (valInt v))
   | _, _, acc => acc

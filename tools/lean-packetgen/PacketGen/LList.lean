@@ -89,3 +89,65 @@ theorem take_eq (n : Nat) (l : LList α) : l.take n = l.toList.take n := by
 
 end LList
 end PacketGen
+
+namespace PacketGen.LList
+
+variable {α β : Type}
+
+/-- weighted number of elements still to come (for termination) -/
+def lenSum (w : Nat) (ls : List (LList β)) : Nat := (ls.map fun s => 2 * s.toList.length + w).sum
+
+/-- Fair merge: active streams are served round-robin from a queue
+(`front ++ back.reverse`), and after every element one more stream `f a` (for
+the next `a` of `rest`) joins.  Each stream starts early and gets a fair share,
+so a prefix of the result touches every stream. -/
+def fairGo (f : α → LList β) (front back : List (LList β)) (rest : LList α) : LList β :=
+  match front, back, rest with
+  | [], [], nil => nil
+  | [], [], cons a more => fairGo f [f a] [] (more ())
+  | [], b :: bs, rest => fairGo f (b :: bs).reverse [] rest
+  | nil :: front', back, rest => fairGo f front' back rest
+  | cons h t :: front', back, nil => cons h fun _ => fairGo f front' (t () :: back) nil
+  | cons h t :: front', back, cons a more =>
+    cons h fun _ => fairGo f front' (f a :: t () :: back) (more ())
+termination_by lenSum 1 front + lenSum 2 back + (rest.toList.map fun a => 2 * (f a).toList.length + 4).sum
+decreasing_by
+  all_goals simp [lenSum, toList_cons, List.sum_append, List.map_reverse, List.sum_reverse]
+  all_goals try omega
+  all_goals
+    have : ∀ l : List (LList β), (l.map fun s => 2 * s.toList.length + 1).sum <
+        (l.map fun s => 2 * s.toList.length + 2).sum + 1 := by
+      intro l; induction l with
+      | nil => simp
+      | cons x l ih => simp; omega
+    have := this bs
+    omega
+
+theorem mem_fairGo (f : α → LList β) (front back : List (LList β)) (rest : LList α) (x : β) :
+    x ∈ (fairGo f front back rest).toList ↔
+      ((∃ s ∈ front ++ back, x ∈ s.toList) ∨ ∃ a ∈ rest.toList, x ∈ (f a).toList) := by
+  induction front, back, rest using fairGo.induct f with
+  | case1 => simp [fairGo]
+  | case2 a more ih =>
+    rw [fairGo, ih]; simp [toList_cons]
+  | case3 b bs rest ih =>
+    rw [fairGo, ih]; simp; grind
+  | case4 front' back rest ih =>
+    rw [fairGo, ih]; simp
+  | case5 h t front' back ih =>
+    rw [fairGo, toList_cons, List.mem_cons, ih]
+    simp only [List.mem_append, List.mem_cons, toList_nil, List.not_mem_nil]
+    grind [toList_cons]
+  | case6 h t front' back a more ih =>
+    rw [fairGo, toList_cons, List.mem_cons, ih]
+    simp only [List.mem_append, List.mem_cons]
+    grind [toList_cons]
+
+/-- `flatMap` in fair order: same elements, but every `f a` starts early -/
+def fairFlatMap (l : LList α) (f : α → LList β) : LList β := fairGo f [] [] l
+
+theorem mem_fairFlatMap (l : LList α) (f : α → LList β) (x : β) :
+    x ∈ (fairFlatMap l f).toList ↔ ∃ a ∈ l.toList, x ∈ (f a).toList := by
+  simp [fairFlatMap, mem_fairGo]
+
+end PacketGen.LList

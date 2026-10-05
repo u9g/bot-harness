@@ -4,12 +4,16 @@ import PacketGen
 `packetgen <protocol.json> [options]`
 
 Writes one JSON line per generated packet to stdout:
-`{"state","direction","name","id","size","params","hex"}` where `hex` is the
+`{"state","direction","name","id","params","hex"}` where `hex` is the
 expected wire encoding (packet id varint followed by the params).
 
+By default every packet is enumerated over the sample values of
+`PacketGen/DefaultSamples.lean` (`enumerate`, proved exact by `mem_enumerate`).
+
 Options:
-* `--size N`        generate every valid packet of size 0..N (default 2)
-* `--limit M`       stop a packet after M values (default 1000, 0 = no limit)
+* `--size N`        instead, generate every valid packet of size 0..N (`generate`)
+* `--limit M`       stop a packet after M values (default 1000, 0 = no limit); a packet cut
+                    this way also gets every single-field variant of its first value
 * `--state S`       only this state (handshaking, status, login, configuration, play)
 * `--direction D`   only toClient / toServer
 * `--packet P`      only this packet name
@@ -21,7 +25,7 @@ open PacketGen
 
 structure Opts where
   file : String := ""
-  size : Nat := 2
+  size : Option Nat := none
   limit : Nat := 1000
   state : Option String := none
   direction : Option String := none
@@ -30,7 +34,7 @@ structure Opts where
 
 partial def parseArgs (o : Opts) : List String → Except String Opts
   | [] => pure o
-  | "--size" :: n :: r => do parseArgs { o with size := ← (n.toNat?.elim (throw "--size") pure) } r
+  | "--size" :: n :: r => do parseArgs { o with size := some (← (n.toNat?.elim (throw "--size") pure)) } r
   | "--limit" :: n :: r => do parseArgs { o with limit := ← (n.toNat?.elim (throw "--limit") pure) } r
   | "--state" :: s :: r => parseArgs { o with state := some s } r
   | "--direction" :: s :: r => parseArgs { o with direction := some s } r
@@ -63,6 +67,7 @@ def main (args : List String) : IO UInt32 := do
   let mut supported := 0
   let mut unsupported := 0
   let mut emitted := 0
+  let mut truncated : List String := []
   for (state, sj) in objPairs proto do
     if state == "types" || o.state.any (· != state) then continue
     for dir in ["toClient", "toServer"] do
@@ -82,19 +87,41 @@ def main (args : List String) : IO UInt32 := do
           if o.report then
             IO.println s!"OK   {state} {dir} {name}"
             continue
+          let emit (n : Option Nat) (v : Val) : IO Unit := do
+            let bytes := encodeInt .varint id ++ t.encode v
+            let fields := [("state", Json.str state), ("direction", .str dir), ("name", .str name),
+              ("id", Lean.toJson id)] ++ (n.map fun n => ("size", Lean.toJson n)).toList ++
+              [("params", t.toJson v), ("hex", .str (hexOf bytes))]
+            stdout.putStrLn (Json.mkObj fields).compress
           let mut count := 0
-          for n in List.range (o.size + 1) do
-            if o.limit != 0 && count ≥ o.limit then break
-            -- `LList.take k l = l.toList.take k` (`LList.take_eq`): a prefix of the
-            -- complete enumeration, computed without forcing the rest
-            let vs := if o.limit == 0 then (generate t n).toList else (generate t n).take (o.limit - count)
-            for v in vs do
+          match o.size with
+          | some size =>
+            for n in List.range (size + 1) do
+              if o.limit != 0 && count ≥ o.limit then break
+              -- `LList.take k l = l.toList.take k` (`LList.take_eq`): a prefix of the
+              -- complete enumeration, computed without forcing the rest
+              let vs := if o.limit == 0 then (generate t n).toList else (generate t n).take (o.limit - count)
+              for v in vs do
+                count := count + 1
+                emit (some n) v
+          | none =>
+            let S := defaultSamples t
+            let all := enumerate S t
+            let vs := if o.limit == 0 then all.toList else all.take (o.limit + 1)
+            let cut := o.limit != 0 && vs.length > o.limit
+            for v in vs.take (if o.limit == 0 then vs.length else o.limit) do
               count := count + 1
-              let bytes := encodeInt .varint id ++ t.encode v
-              let line := Json.mkObj [("state", .str state), ("direction", .str dir),
-                ("name", .str name), ("id", Lean.toJson id), ("size", Lean.toJson n),
-                ("params", t.toJson v), ("hex", .str (hexOf bytes))]
-              stdout.putStrLn line.compress
+              emit none v
+            if cut then
+              truncated := truncated ++ [s!"{state}.{dir}.{name}"]
+              -- top up with every single-field change of the first packet (`variants_valid`)
+              if let some v0 := vs.head? then
+                for v in variants S t v0 do
+                  count := count + 1
+                  emit none v
           emitted := emitted + count
   IO.eprintln s!"packet types translated: {supported}, skipped (unsupported natives): {unsupported}, packets emitted: {emitted}"
+  if o.size.isNone && !o.report then
+    IO.eprintln s!"enumerated completely: {supported - truncated.length}, cut at --limit: {truncated.length}"
+    for p in truncated do IO.eprintln s!"  limit reached: {p}"
   return 0

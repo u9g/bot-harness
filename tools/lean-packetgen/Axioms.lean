@@ -5,3 +5,4 @@ import PacketGen
 #print axioms PacketGen.generate_sound
 #print axioms PacketGen.mem_generateUpTo
 #print axioms PacketGen.LList.take_eq
+#print axioms PacketGen.mem_enumerate
