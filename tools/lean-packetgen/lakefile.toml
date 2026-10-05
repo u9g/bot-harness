@@ -1,0 +1,10 @@
+name = "packetgen"
+version = "0.1.0"
+defaultTargets = ["packetgen"]
+
+[[lean_lib]]
+name = "PacketGen"
+
+[[lean_exe]]
+name = "packetgen"
+root = "Main"
