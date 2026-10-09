@@ -163,13 +163,17 @@ let val = value._value ${big ? '|| 0n' : ''}
 for (const key in flags) {
   if (value[key]) val |= flags[key]
 }
+${(!big && /^l?u/.test(type)) ? 'val = val >>> 0 // unsigned underlying type: keep bit 31 from making val negative and rejected' : ''}
 return (ctx.${type})(val, buffer, offset)
       `.trim())
     }],
     mapper: ['parametrizable', (compiler, mapper) => {
       const mappings = JSON.stringify(swapMappings(mapper.mappings))
-      let code = `const mapped = ${mappings}[value]\n`
-      code += 'if (mapped === undefined) throw new Error(value + \' is not in the mappings value\')\n'
+      let code = `let mapped = ${mappings}[value]\n`
+      code += 'if (mapped === undefined) {\n'
+      code += '  if (typeof value !== \'number\') throw new Error(value + \' is not in the mappings value\')\n'
+      code += '  mapped = value\n'
+      code += '}\n'
       code += 'return ' + compiler.callType('mapped', mapper.type)
       return compiler.wrapCode(code)
     }],
@@ -231,13 +235,17 @@ let val = value._value ${big ? '|| 0n' : ''}
 for (const key in flags) {
   if (value[key]) val |= flags[key]
 }
+${(!big && /^l?u/.test(type)) ? 'val = val >>> 0 // unsigned underlying type (see above)' : ''}
 return (ctx.${type})(val)
       `.trim())
     }],
     mapper: ['parametrizable', (compiler, mapper) => {
       const mappings = JSON.stringify(swapMappings(mapper.mappings))
-      let code = `const mapped = ${mappings}[value]\n`
-      code += 'if (mapped === undefined) throw new Error(value + \' is not in the mappings value\')\n'
+      let code = `let mapped = ${mappings}[value]\n`
+      code += 'if (mapped === undefined) {\n'
+      code += '  if (typeof value !== \'number\') throw new Error(value + \' is not in the mappings value\')\n'
+      code += '  mapped = value\n'
+      code += '}\n'
       code += 'return ' + compiler.callType('mapped', mapper.type)
       return compiler.wrapCode(code)
     }],

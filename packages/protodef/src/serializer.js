@@ -19,16 +19,7 @@ class Serializer extends Transform {
   }
 
   createPacketBuffer (packet) {
-    try {
-      return this.proto.createPacketBuffer(this.mainType, packet)
-    } catch (e) {
-      // A compiled protocol reports no field path, so the packet name is the only way to say which packet failed
-      const name = packet?.name
-      if (name != null && !String(e.field ?? '').split('.').includes(String(name))) {
-        e.message = `in packet ${name}: ${e.message}`
-      }
-      throw e
-    }
+    return this.proto.createPacketBuffer(this.mainType, packet)
   }
 
   _transform (chunk, enc, cb) {

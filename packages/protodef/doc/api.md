@@ -56,8 +56,7 @@ Create a serializer of `mainType` defined in `proto`. This is a Transform stream
 
 ### Serializer.createPacketBuffer(packet)
 
-Returns a buffer of the `packet`. If serialization fails and `packet.name` is set, the error message is prefixed with
-`in packet <name>: ` unless the error's field path already contains that name.
+Returns a buffer of the `packet`.
 
 ## Parser(proto,mainType)
 
