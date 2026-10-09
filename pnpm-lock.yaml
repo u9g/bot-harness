@@ -293,15 +293,15 @@ importers:
 
   packages/prismarine-item:
     dependencies:
+      prismarine-chat:
+        specifier: ^1.13.0
+        version: 1.13.0(supports-color@8.1.1)
       prismarine-nbt:
         specifier: ^2.0.0
         version: 2.8.0
       prismarine-registry:
         specifier: ^1.4.0
         version: 1.12.0
-      protodef:
-        specifier: workspace:*
-        version: link:../protodef
     devDependencies:
       '@types/node':
         specifier: ^25.4.0
@@ -309,12 +309,6 @@ importers:
       expect:
         specifier: ^29.1.2
         version: 29.7.0
-      minecraft-protocol:
-        specifier: workspace:*
-        version: link:../minecraft-protocol
-      minecraft-wrap:
-        specifier: ^1.10.0
-        version: 1.10.0(supports-color@8.1.1)
       mocha:
         specifier: ^11.0.1
         version: 11.8.0
