@@ -382,6 +382,7 @@ module.exports = function (client, options) {
   function getAcknowledgements () {
     let acc = 0
     const acknowledgements = []
+    const lastSeenMessages = []
 
     for (let i = 0; i < client._lastSeenMessages.capacity; i++) {
       const idx = (client._lastSeenMessages.offset + i) % 20
@@ -389,6 +390,8 @@ module.exports = function (client, options) {
       if (message) {
         acc |= 1 << i
         acknowledgements.push(message.signature)
+        lastSeenMessages.push(message)
+        message.pending = false
       }
     }
 
@@ -399,17 +402,9 @@ module.exports = function (client, options) {
 
     return {
       acknowledgements,
-      acknowledged: bitset
+      acknowledged: bitset,
+      checksum: computeChatChecksum(lastSeenMessages)
     }
-  }
-
-  // Call only after writing a packet that carries the acknowledgements from getAcknowledgements.
-  function markAcknowledgementsSent () {
-    for (let i = 0; i < client._lastSeenMessages.capacity; i++) {
-      const message = client._lastSeenMessages[(client._lastSeenMessages.offset + i) % 20]
-      if (message) message.pending = false
-    }
-    client._lastSeenMessages.pending = 0
   }
 
   client._signedChat = (message, options = {}) => {
@@ -419,24 +414,19 @@ module.exports = function (client, options) {
     if (message.startsWith('/')) {
       const command = message.slice(1)
       if (mcData.supportFeature('useChatSessions')) { // 1.19.3+
-        const { acknowledged, acknowledgements } = getAcknowledgements()
+        const { acknowledged, acknowledgements, checksum } = getAcknowledgements()
         const canSign = client.profileKeys && client._session
-        const argumentSignatures = canSign ? signaturesForCommand(command, options.timestamp, options.salt, options.preview, acknowledgements) : []
         const chatPacket = {
           command,
           timestamp: options.timestamp,
           salt: options.salt,
-          argumentSignatures,
+          argumentSignatures: canSign ? signaturesForCommand(command, options.timestamp, options.salt, options.preview, acknowledgements) : [],
           messageCount: client._lastSeenMessages.pending,
-          checksum: computeChatChecksum(client._lastSeenMessages), // 1.21.5+
+          checksum, // 1.21.5+
           acknowledged
         }
-        const separateSignedPacket = mcData.supportFeature('seperateSignedChatCommandPacket')
-        // A command with nothing to sign goes as the unsigned chat_command whether or not the client can sign.
-        const signedPacket = separateSignedPacket && argumentSignatures.length > 0
-        client.write(signedPacket ? 'chat_command_signed' : 'chat_command', chatPacket)
-        // Once the packets are split, chat_command carries only the command, so it acknowledges nothing.
-        if (signedPacket || !separateSignedPacket) markAcknowledgementsSent()
+        client.write((mcData.supportFeature('seperateSignedChatCommandPacket') && canSign) ? 'chat_command_signed' : 'chat_command', chatPacket)
+        client._lastSeenMessages.pending = 0
       } else {
         client.write('chat_command', {
           command,
@@ -457,17 +447,17 @@ module.exports = function (client, options) {
     }
 
     if (mcData.supportFeature('useChatSessions')) {
-      const { acknowledgements, acknowledged } = getAcknowledgements()
+      const { acknowledgements, acknowledged, checksum } = getAcknowledgements()
       client.write('chat_message', {
         message,
         timestamp: options.timestamp,
         salt: options.salt,
         signature: (client.profileKeys && client._session) ? client.signMessage(message, options.timestamp, options.salt, undefined, acknowledgements) : undefined,
         offset: client._lastSeenMessages.pending,
-        checksum: computeChatChecksum(client._lastSeenMessages), // 1.21.5+
+        checksum, // 1.21.5+
         acknowledged
       })
-      markAcknowledgementsSent()
+      client._lastSeenMessages.pending = 0
 
       return
     }
