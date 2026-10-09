@@ -55,6 +55,10 @@ class Movements {
     this.liquids = new Set()
     this.liquids.add(registry.blocksByName.water.id)
     this.liquids.add(registry.blocksByName.lava.id)
+    // These blocks contain water even though their block ID is not water.
+    for (const name of ['seagrass', 'tall_seagrass', 'kelp', 'kelp_plant', 'bubble_column']) {
+      if (registry.blocksByName[name]) this.liquids.add(registry.blocksByName[name].id)
+    }
 
     this.gravityBlocks = new Set()
     this.gravityBlocks.add(registry.blocksByName.sand.id)
@@ -233,7 +237,7 @@ class Movements {
     b.safe = (b.boundingBox === 'empty' || b.climbable || this.carpets.has(b.type)) && !this.blocksToAvoid.has(b.type)
     b.physical = b.boundingBox === 'block' && !this.fences.has(b.type)
     b.replaceable = this.replaceables.has(b.type) && !b.physical
-    b.liquid = this.liquids.has(b.type)
+    b.liquid = this.liquids.has(b.type) || b.isWaterlogged === true
     b.height = pos.y + dy
     b.canFall = this.gravityBlocks.has(b.type)
     b.openable = this.openable.has(b.type)
@@ -406,6 +410,9 @@ class Movements {
 
     const blockC = this.getBlock(node, dir.x, 0, dir.z) // Landing block or standing on block when jumping up by 1
     const y = blockC.physical ? 1 : 0
+    // A diagonal jump can clip the corner of the raised block. Use the
+    // cardinal jump instead, where the executor can approach it head-on.
+    if (y === 1) return
 
     const block0 = this.getBlock(node, 0, -1, 0)
 
@@ -414,6 +421,7 @@ class Movements {
     const blockB1 = this.getBlock(node, 0, y + 1, dir.z)
     const blockC1 = this.getBlock(node, 0, y, dir.z)
     const blockD1 = this.getBlock(node, 0, y - 1, dir.z)
+    if (!blockB1.safe || !blockC1.safe) return
     cost1 += this.safeOrBreak(blockB1, toBreak1)
     cost1 += this.safeOrBreak(blockC1, toBreak1)
     if (blockD1.height - block0.height > 1.2) cost1 += this.safeOrBreak(blockD1, toBreak1)
@@ -423,6 +431,7 @@ class Movements {
     const blockB2 = this.getBlock(node, dir.x, y + 1, 0)
     const blockC2 = this.getBlock(node, dir.x, y, 0)
     const blockD2 = this.getBlock(node, dir.x, y - 1, 0)
+    if (!blockB2.safe || !blockC2.safe) return
     cost2 += this.safeOrBreak(blockB2, toBreak2)
     cost2 += this.safeOrBreak(blockC2, toBreak2)
     if (blockD2.height - block0.height > 1.2) cost2 += this.safeOrBreak(blockD2, toBreak2)
