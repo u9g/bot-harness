@@ -6,7 +6,6 @@
   "types": "index.d.ts",
   "scripts": {
     "test": "mocha --reporter spec --exit",
-    "e2e": "mocha test/e2e --reporter spec --exit",
     "pretest": "npm run lint",
     "fix": "standard --fix",
     "lint": "standard"
@@ -18,8 +17,6 @@
   "devDependencies": {
     "@types/node": "^25.4.0",
     "expect": "^29.1.2",
-    "minecraft-protocol": "^1.68.0",
-    "minecraft-wrap": "^1.10.0",
     "mocha": "^11.0.1",
     "prismarine-item": "file:.",
     "standard": "^17.0.0"
@@ -36,8 +33,8 @@
   },
   "homepage": "https://github.com/PrismarineJS/prismarine-item#readme",
   "dependencies": {
+    "prismarine-chat": "^1.13.0",
     "prismarine-nbt": "^2.0.0",
-    "prismarine-registry": "^1.4.0",
-    "protodef": "^1.20.0"
+    "prismarine-registry": "^1.4.0"
   }
 }

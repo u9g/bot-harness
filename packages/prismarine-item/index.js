@@ -1,5 +1,4 @@
 const nbt = require('prismarine-nbt')
-const hashedSlotLoader = require('./lib/hashedSlot')
 
 // 1.20.5 moved the custom name and the lore into data components, which carry a chat component as
 // NBT; the display.Name and display.Lore tags they replaced carried the same component as the JSON
@@ -13,9 +12,37 @@ function chatComponentJson (component) {
   return JSON.stringify(value)
 }
 
+// Strips prismarine-nbt wrappers down to plain JS values; every nbt tag arrives as {type, value}.
+function nbtValue (v) {
+  if (v == null || typeof v !== 'object') return v
+  if (Array.isArray(v)) return v.map(nbtValue)
+  if (typeof v.type === 'string' && 'value' in v) return nbtValue(v.value)
+  const out = {}
+  for (const k of Object.keys(v)) out[k] = nbtValue(v[k])
+  return out
+}
+
+function safeJson (s) {
+  try { return JSON.parse(s) } catch { return s }
+}
+
+// Normalizes a chat component (an NBT compound/value, a parsed JSON object, a JSON string, or a
+// plain string) to the JSON shape prismarine-chat takes; null when the input holds no component.
+// `serialized` says whether a string is a serialized component; when it isn't, the string is the
+// name itself and is passed through untouched.
+function chatJson (c, serialized) {
+  if (c == null) return null
+  const v = nbtValue(serialized && typeof c === 'string' ? safeJson(c) : c)
+  return typeof v === 'string' || typeof v === 'object' ? v : null
+}
+
 function loader (registryOrVersion) {
   const registry = typeof registryOrVersion === 'string' ? require('prismarine-registry')(registryOrVersion) : registryOrVersion
-  const hashedSlot = registry.type === 'pc' && registry.protocol?.types?.HashedSlot ? hashedSlotLoader(registry) : null
+  let ChatMessage
+  // 18w01a made an item's name a serialized chat component; before 1.13, and on bedrock at every
+  // version, `display.Name` holds the name verbatim. A literal name has to stay literal: parsing
+  // it would turn `{"text":"Hello"}` into `Hello` and make `{"extra":{}}` an invalid component.
+  const customNameIsSerialized = registry.type !== 'bedrock' && registry.version['>=']('1.13')
   class Item {
     constructor (type, count, metadata, nbt, stackId, sentByServer) {
       if (type == null) return
@@ -50,14 +77,9 @@ function loader (registryOrVersion) {
       const itemEnum = registry.items[type]
       if (itemEnum) {
         this.name = itemEnum.name
-        this.displayName = itemEnum.displayName
+        this.applyCustomName()
         this.stackSize = itemEnum.stackSize
         this.maxDurability = itemEnum.maxDurability
-
-        if ('variations' in itemEnum) {
-          const variation = itemEnum.variations.find((item) => item.metadata === metadata)
-          if (variation) this.displayName = variation.displayName
-        }
 
         // Can't initialize fields if the item was sent by the server
         if (!sentByServer) {
@@ -69,6 +91,21 @@ function loader (registryOrVersion) {
         this.displayName = 'unknown'
         this.stackSize = 1
       }
+    }
+
+    // Vanilla renders an item's custom name (1.20.5+ `custom_name` component, NBT `display.Name`
+    // before that) everywhere the item's name is shown, so displayName reflects it too: the plain
+    // text of the chat component, falling back to the item's own display name.
+    applyCustomName () {
+      const json = chatJson(this.customName, customNameIsSerialized)
+      if (json === null) {
+        const itemEnum = registry.items[this.type]
+        const variation = itemEnum?.variations?.find((item) => item.metadata === this.metadata)
+        this.displayName = variation?.displayName ?? itemEnum?.displayName ?? 'unknown'
+        return
+      }
+      ChatMessage ??= require('prismarine-chat')(registry)
+      this.displayName = new ChatMessage(json).toString()
     }
 
     static equal (item1, item2, matchStackSize = true, matchNbt = true) {
@@ -92,23 +129,6 @@ function loader (registryOrVersion) {
     static currentStackId = 0
     static nextStackId () {
       return Item.currentStackId++
-    }
-
-    // 1.21.5+ window_click claims slot contents as HashedSlot: the item id,
-    // count and a CRC32C per changed component instead of the components
-    // themselves. A component the hasher can't reproduce is sent with hash 0,
-    // which just makes the server resend that slot.
-    static toHashedNotch (item) {
-      if (!hashedSlot) throw new Error('HashedSlot is not part of this version\'s protocol')
-      if (!item) return null
-      return {
-        itemId: item.type,
-        itemCount: item.count,
-        components: item.components
-          .filter(component => !hashedSlot.NOT_HASHED.has(component.type))
-          .map(component => ({ type: component.type, hash: hashedSlot.hashComponent(component.type, component.data) ?? 0 })),
-        removeComponents: item.removedComponents
-      }
     }
 
     static toNotch (item, serverAuthoritative = true) {
@@ -193,6 +213,7 @@ function loader (registryOrVersion) {
               if (component.type === 'custom_data') item.nbt = component.data
             }
           }
+          item.applyCustomName()
           return item
         } else if (registry.supportFeature('itemSerializationWillOnlyUsePresent')) {
           return new Item(networkItem.itemId, networkItem.itemCount, networkItem.nbtData, null, true)
@@ -233,11 +254,13 @@ function loader (registryOrVersion) {
     set customName (newName) {
       if (this.componentMap) {
         this.componentMap.set('custom_name', { type: 'custom_name', data: newName })
+        this.applyCustomName()
         return
       }
       if (!this.nbt) this.nbt = nbt.comp({})
       if (!this.nbt.value.display) this.nbt.value.display = { type: 'compound', value: {} }
       this.nbt.value.display.value.Name = nbt.string(newName)
+      this.applyCustomName()
     }
 
     get customLore () {
