@@ -4,7 +4,7 @@
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
       "baseSha": "33a0f3e7323e124a81960a6d6c62df797d69cd85",
-      "tip": "b86a643e84e0c071741f70a2fd7184960d5d0584",
+      "tip": "ba6e324d549419cb7aa1a51707cd698c2949a4ec",
       "tree": "ecc65bf9e41b581c51e204b710bfb13b42d5689a",
       "prs": [
         {
@@ -52,7 +52,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "7d3956d5a27b0d25048f870a2c9b436d6326ef29",
-      "tip": "ddc7a76be1d65f491c1ea1afb9c77b38ade16140",
+      "tip": "3fc51037fd9d6eb390f7de67ad4b887385ce6c90",
       "tree": "fdce576b81356a7cd7165e80a5bffe5ac58ceec9",
       "prs": [
         {
@@ -83,7 +83,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "1c83189272348b9e12076465a748a5ecdd14acce",
-      "tip": "9c6148562bb6a9c91117a746212372d834c3989a",
+      "tip": "6b81a4a5f833dbf58be63c08320b1c0fd99c7400",
       "tree": "778f7914da7c306e9814871e2953f73921642984",
       "prs": [
         {
@@ -114,7 +114,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "2b148a386275a1518f2a30ba354700abd6d1ab19",
-      "tip": "a5050175e10ae5ad00e69239fbac65c96b4e30c9",
+      "tip": "73fb43988cb181aec1237e24c4a9f9dd7f0d5638",
       "tree": "3087e8a6a4f9b23a9e9a73e92a098d69af788c9e",
       "prs": [
         {
@@ -146,8 +146,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "f2b236a35facc0614e43578a26fd476564a1a1e5",
-      "tip": "5a4efa5b603e30438e4787e09e4c2dab0f3954e8",
-      "tree": "22780c701f20989a178ce4ea20fc9b4638f97282",
+      "tip": "e775f79f74c208458a8f132c3c8a8653ea3da9da",
+      "tree": "ee2f724606c48fd7e41ca07a2938389ec5707df5",
       "prs": [
         {
           "number": 4021,
@@ -322,8 +322,8 @@
         {
           "number": 4126,
           "title": "test: move every internal test into its own file under test/internalTests",
-          "head": "7af8be8e574fff573b10815eb1f2c9b6bbac59a3",
-          "mergeBase": "91204b2a034f0663b39814771e236bcb7c8f26c8",
+          "head": "bc192491bc641c1a3a4b906172d86ecbcd6466c3",
+          "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
@@ -352,7 +352,7 @@
         {
           "number": 4175,
           "title": "test: wait for plugin injection before kicking in the chat after a kick during login test",
-          "head": "d9a639903820b8e5883f8bb975e07d6584a9c70f",
+          "head": "a0e5ffeeddc5f7ebdf341bf47f736f93d2c18e59",
           "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
           "status": "applied"
         }
@@ -362,7 +362,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d773d15ff1bb271090122b3c7106a519a68bbbd9",
-      "tip": "59b6064e780a59399bfc3f44cc63e38dfd3b1366",
+      "tip": "e088deaf436096425edcb5cd1dacad42074b0065",
       "tree": "4db3f117df97510078c9b7614d1f5f903a0c239b",
       "prs": [
         {
@@ -386,7 +386,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "8a3ce60b40f1ff7a26422a8f8904fbedbe808688",
-      "tip": "8493e5d5ab7f9d273cfd1154e94c222b60eaab2b",
+      "tip": "eafba41d3dfeae4e3aee3005ab73f8ec536a0f08",
       "tree": "07cd176795616f2bd1eafb785c9abe8303694bf5",
       "prs": [
         {
