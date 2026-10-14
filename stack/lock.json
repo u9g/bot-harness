@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "33a0f3e7323e124a81960a6d6c62df797d69cd85",
-      "tip": "ba6e324d549419cb7aa1a51707cd698c2949a4ec",
-      "tree": "ecc65bf9e41b581c51e204b710bfb13b42d5689a",
+      "baseSha": "201ca802a1b2c968b02e7fa5b31dd74e8bff3d8b",
+      "tip": "39a953188b77bddd717a911c4c3faf58f214cc06",
+      "tree": "1cb4e647ee915d4b9c2253f5a8c9ed7dbc053053",
       "prs": [
         {
           "number": 1292,
@@ -52,7 +52,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "7d3956d5a27b0d25048f870a2c9b436d6326ef29",
-      "tip": "3fc51037fd9d6eb390f7de67ad4b887385ce6c90",
+      "tip": "0fcc5ffd1e7f79669b3ca3499eb8c0ba09d9833b",
       "tree": "fdce576b81356a7cd7165e80a5bffe5ac58ceec9",
       "prs": [
         {
@@ -83,7 +83,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "1c83189272348b9e12076465a748a5ecdd14acce",
-      "tip": "6b81a4a5f833dbf58be63c08320b1c0fd99c7400",
+      "tip": "1fb694a8b8d74b30f0d985fed351c64780361156",
       "tree": "778f7914da7c306e9814871e2953f73921642984",
       "prs": [
         {
@@ -114,7 +114,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "2b148a386275a1518f2a30ba354700abd6d1ab19",
-      "tip": "73fb43988cb181aec1237e24c4a9f9dd7f0d5638",
+      "tip": "f2a213d69c486b52187c99dff843afde6e30b266",
       "tree": "3087e8a6a4f9b23a9e9a73e92a098d69af788c9e",
       "prs": [
         {
@@ -145,9 +145,9 @@
     "mineflayer": {
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
-      "baseSha": "f2b236a35facc0614e43578a26fd476564a1a1e5",
-      "tip": "e775f79f74c208458a8f132c3c8a8653ea3da9da",
-      "tree": "ee2f724606c48fd7e41ca07a2938389ec5707df5",
+      "baseSha": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+      "tip": "3e688e45cca05474538ae5c47905ec00f3a9dd98",
+      "tree": "2acdf1a437d4fc4ec9455e8fc3ffa58ab3de8fc2",
       "prs": [
         {
           "number": 4021,
@@ -159,38 +159,36 @@
         {
           "number": 4027,
           "title": "inventory: claim clicked slots by hash on 1.21.5+",
-          "head": "4bac54bdfff4648a138805d76ef2f443562466e7",
-          "mergeBase": "c07e457f79fd6faef17b195a47b798f27031e867",
+          "head": "402d8d071bcf67b0a6756fa225d2a1bda80e9c75",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
         {
           "number": 4062,
           "title": "entities: read the 1.21.2+ entity_teleport layout (velocity, float rotation, relative flags)",
-          "head": "8b4440b5617cecb31399748d57cf6b809382a19c",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "conflict",
-          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "head": "57334280b186de71799380b6f21dcb33ae2bc13e",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
         },
         {
           "number": 4063,
           "title": "physics: send the movement input packets the vanilla client sends",
-          "head": "b296ac574f5d9622ca22df900fce2c380e67aa47",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "lib/plugins/physics.js, test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "head": "b02a5cbc3c6f79679318ab9bab95ddadfb8168c6",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
         },
         {
           "number": 4064,
           "title": "health: send player_loaded when the vanilla client would",
-          "head": "0e51bd80be9e036b0aa964b73c130b837fc20067",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
+          "head": "2d56a114d79307a94f47a56a3950f4a4d5e50900",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
         {
           "number": 4065,
           "title": "Send Client Information once, when the vanilla client does",
-          "head": "f15a5303ac4ed4ff8bd33adbddbe4f37b4cdb518",
-          "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
+          "head": "f74b697787929cc88a0e2e3254eb6867b1e04f11",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
@@ -202,63 +200,55 @@
           "status": "applied"
         },
         {
-          "number": 4075,
-          "title": "test: build only the versions under test",
-          "head": "46c13151b62e71caa58587e061ca4f199f1ad38b",
-          "mergeBase": "245773068fa981098acbe902e0c60e6db07c077c",
-          "status": "applied"
-        },
-        {
           "number": 4081,
           "title": "fix: give teamRemoved the team that was removed",
-          "head": "56dc765ac9ea07184b91c4df2af43bb5fb38182f",
+          "head": "8b298b27287fdaa8ece653c4ed8ad1c546edd886",
           "mergeBase": "91204b2a034f0663b39814771e236bcb7c8f26c8",
           "status": "applied"
         },
         {
           "number": 4086,
           "title": "Send the client_command respawn after win_game with the actionId field",
-          "head": "02bc8ced4f231e5baf7fdfe525a7c1d6e793bd22",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "head": "352fd0311ec9813d0a26b8d74c12f80d8ed8b884",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
         {
           "number": 4087,
           "title": "Report resource packs as ACCEPTED, DOWNLOADED, SUCCESSFULLY_LOADED and deny once",
-          "head": "dc290378d252dda9026c5183e2dd2431a58e1ae5",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "head": "279bcc6e0e053aa7ce25380dca647f5547c90572",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4089,
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
-          "head": "ba08fc075d213babf4487e10c3becb7614ab0645",
-          "mergeBase": "e54c4017569cf9fae77f85b30115b4f45ed6c269",
-          "status": "resolved-rerere"
+          "head": "5e6d8b2a358de17b0279258982fefbc692c82be5",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
         },
         {
           "number": 4093,
-          "title": "Dismount by holding sneak for one tick on 1.21.3+",
-          "head": "b8466c6e4865a80d3bfaa4eef6b883a2fa27718d",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "title": "Dismount by holding sneak like vanilla",
+          "head": "57d21af3d6fe5180c8e43397256f6e9258a701c3",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
         {
           "number": 4094,
           "title": "Swing every tick while digging, skip STOP on instant breaks and abort with face DOWN",
-          "head": "2c53f8a6c808f7fc51f2a80ffde25099144140ee",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "head": "1fb02c9e32babeeac6fde82cca99194e6c8e5b64",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
-          "note": "lib/plugins/digging.js, lib/plugins/sequence.js, test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4103,
           "title": "Window state across close, re-login and respawn: stateId per window, close_window on respawn, closeWindow(null)",
-          "head": "5d4dab47f3bfe1f414222cd6c1d39b8b234c6107",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "conflict",
-          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "head": "0819fd6d30177b6e9dc5c044a09bd05c979bb523",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
         },
         {
           "number": 4104,
@@ -270,60 +260,54 @@
         {
           "number": 4108,
           "title": "physics: a teleport leaves the standing flag alone",
-          "head": "ec496b5a50fa26e3be577c1b83a88cde6dd0b933",
-          "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
-          "status": "applied"
-        },
-        {
-          "number": 4111,
-          "title": "Read the scoreboard objective title as a chat component",
-          "head": "4ec9950e598d1349388e3303dfb74e590e1dc3aa",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "head": "e55e2de24c80b730b405a17a6be566eca20ea899",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
-          "number": 4112,
-          "title": "scoreboard: read the 1.20.3+ objective and score packets",
-          "head": "1494ae6357d6740bea8189cefa48a7635531900c",
-          "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
+          "number": 4111,
+          "title": "Read the scoreboard objective title as a chat component",
+          "head": "f8dd937e190290d75837059ba80be69dd8f93a73",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
         {
-          "number": 4114,
-          "title": "placeEntity: write a complete use_item when placing a boat",
-          "head": "b56eced2a30f1069f77b65689d27dad5be0e97a0",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "number": 4112,
+          "title": "scoreboard: read the 1.20.3+ objective and score packets",
+          "head": "3334e47cb6d5a512a5183305c720faa3e2bc493b",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
-          "note": "lib/plugins/place_entity.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "note": "lib/scoreboard.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+        },
+        {
+          "number": 4114,
+          "title": "placeEntity: test that the boat use_item serializes on every version",
+          "head": "6b46f1afea86a96e7760e8526ee60c65850c71f9",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
         },
         {
           "number": 4115,
           "title": "placeBlock: derive the face and the cursor from a raycast, like the client does",
-          "head": "10cd5d25a805602b638ee42553b4ed5b3e89bbd4",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "applied"
-        },
-        {
-          "number": 4116,
-          "title": "waitForTicks: say when it is physics that is missing, not the server",
-          "head": "33f944e44f92b9eff7579fa66e24837d596ed974",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
-          "status": "applied"
+          "head": "7a06f475ae76283b33dae05a6ad1ff90aafdbe4f",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "conflict",
+          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4118,
           "title": "Expose the interaction ranges the server sends, and the reach check vanilla makes",
-          "head": "0ff895756692c5923ab10fc2d40a7967acb7f0c1",
-          "mergeBase": "7f188fb3c0987c95f5c504694fddb472ce33f592",
+          "head": "491c2c317c973745d14fe8cbbf952b58ba1bae45",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
-          "note": "index.d.ts, lib/plugins/entities.js, test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "note": "lib/plugins/entities.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4126,
           "title": "test: move every internal test into its own file under test/internalTests",
-          "head": "bc192491bc641c1a3a4b906172d86ecbcd6466c3",
-          "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
+          "head": "ef8afec407fe37dedad5fa6ba713e867da02aa92",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
@@ -337,23 +321,67 @@
         {
           "number": 4164,
           "title": "Dump packets that fail to parse to a local file",
-          "head": "9b6967d582740f02d6578c6abcdef15b576b0630",
+          "head": "013a3eb358100bf055b962e525875fcb047f5900",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
+        },
+        {
+          "number": 4168,
+          "title": "Move health plugin logic into a sans-io core",
+          "head": "f345ac257f5471230e6fcd50fe8646965be5116a",
           "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
+          "status": "conflict",
+          "note": "lib/plugins/health.js: model error: 429 Insufficient balance or no resource package. Please recharge."
+        },
+        {
+          "number": 4176,
+          "title": "test: log in again when the server never reads the bot's socket",
+          "head": "95963c8f49ed13386958da173f8eeeb2ab1fc772",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
+        },
+        {
+          "number": 4177,
+          "title": "Emit inject_allowed on the next tick, before any packet can arrive",
+          "head": "f186a2122e2a33a7613f82cba57d19ae484c1ee6",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
+        },
+        {
+          "number": 4178,
+          "title": "ci: halve CI wall time",
+          "head": "baed46cd7c7f90ed46c36384fba7dbf48a4124dd",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
+        },
+        {
+          "number": 4180,
+          "title": "ci: compare test durations against the slowest of master's last 10 runs",
+          "head": "17cac5d7b4fb0053188e225ce24167dc88239cfc",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "conflict",
+          "note": ".github/workflows/ci.yml: model error: 429 Insufficient balance or no resource package. Please recharge."
+        },
+        {
+          "number": 4181,
+          "title": "Don't crash setInventorySlot on an empty slot update",
+          "head": "f8f16b282532b7c2b06f11f0ae5fdf7d2974bf54",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
+        },
+        {
+          "number": 4182,
+          "title": "blockAtEntityCursor: raycast from the eye, and accept a pitch or yaw of 0",
+          "head": "38a14de114168cbb62811839ef60139497d95088",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
-          "number": 4174,
-          "title": "test: wait for plugin injection before the scoreboard reset on login test reads bot state",
-          "head": "e22951527633e03a6b3618d2aead41bc1e55ce01",
-          "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
-          "status": "applied"
-        },
-        {
-          "number": 4175,
-          "title": "test: wait for plugin injection before kicking in the chat after a kick during login test",
-          "head": "a0e5ffeeddc5f7ebdf341bf47f736f93d2c18e59",
-          "mergeBase": "f2b236a35facc0614e43578a26fd476564a1a1e5",
+          "number": 4184,
+          "title": "fix: read set_cooldown's cooldown group on 1.21.3+",
+          "head": "bc60f0b1812ee1db29c037099ce89d40f1293f12",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         }
       ]
@@ -362,7 +390,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d773d15ff1bb271090122b3c7106a519a68bbbd9",
-      "tip": "e088deaf436096425edcb5cd1dacad42074b0065",
+      "tip": "2d78debab14391651dac9174786e47c8cb3ac1df",
       "tree": "4db3f117df97510078c9b7614d1f5f903a0c239b",
       "prs": [
         {
@@ -386,7 +414,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "8a3ce60b40f1ff7a26422a8f8904fbedbe808688",
-      "tip": "eafba41d3dfeae4e3aee3005ab73f8ec536a0f08",
+      "tip": "8569c744fdcc02d68f538960f6df75c829053f57",
       "tree": "07cd176795616f2bd1eafb785c9abe8303694bf5",
       "prs": [
         {
