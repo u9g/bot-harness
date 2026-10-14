@@ -14,22 +14,18 @@ module.exports = (bot) => {
       this.itemsMap = {}
     }
 
-    // The objective's title is a plain string on 1.8, a JSON component from 1.13 and an NBT
-    // component from 1.20.3; only the middle one used to survive, and only its top-level text.
+    // A title is a plain string before 1.13, a JSON component string up to 1.20.2 and an NBT component
+    // after that; fromNotch reads all three.
     setTitle (title) {
       this.title = ChatMessage.fromNotch(title)
     }
 
-    add (name, value, display) {
-      // 1.20.3+ may send the component to draw in place of the entry's own name.
-      const displayed = display == null ? null : ChatMessage.fromNotch(display)
+    add (name, value) {
+      this.itemsMap[name] = { name, value }
       this.itemsMap[name] = {
         name,
         value,
         get displayName () {
-          if (displayed !== null) {
-            return displayed
-          }
           if (name in bot.teamMap) {
             return bot.teamMap[name].displayName(name)
           }

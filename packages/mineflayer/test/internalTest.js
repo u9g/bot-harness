@@ -9,9 +9,11 @@ const nbt = require('prismarine-nbt')
 const { once, onceWithCleanup } = require('../lib/promise_utils')
 const { EventEmitter } = require('events')
 const { getPort } = require('./common/util')
-const { versionsUnderTest } = require('./common/versions')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
 
-for (const supportedVersion of versionsUnderTest) {
+for (const supportedVersion of mineflayer.testedVersions) {
   const registry = require('prismarine-registry')(supportedVersion)
   const version = registry.version
   const Chunk = require('prismarine-chunk')(supportedVersion)
@@ -23,6 +25,28 @@ for (const supportedVersion of versionsUnderTest) {
     return registry.supportFeature('chatPacketsUseNbtComponents')
       ? nbt.comp({ text: nbt.string(text) })
       : JSON.stringify({ text })
+  }
+
+  const TEAM_MODES = ['add', 'remove', 'change', 'join', 'leave']
+  function teamPacket (teamName, mode, players) {
+    const text = registry.supportFeature('teamUsesChatComponents') ? chatText : (s) => s
+    // 1.21.6 maps the mode to a string; 1.21.5 alone sends the rules as numbers.
+    const mappedMode = registry.version['>=']('1.21.6')
+    const enumRules = registry.version['>=']('1.21.5') && registry.version['<']('1.21.6')
+    return {
+      team: teamName,
+      mode: mappedMode ? TEAM_MODES[mode] : mode,
+      name: text(teamName),
+      prefix: text(''),
+      suffix: text(''),
+      friendlyFire: 1,
+      flags: { friendly_fire: true, see_friendly_invisible: false },
+      nameTagVisibility: enumRules ? 0 : 'always',
+      collisionRule: enumRules ? 0 : 'always',
+      color: 0,
+      formatting: 0,
+      players
+    }
   }
 
   function generateChunkPacket (chunk) {
@@ -68,12 +92,10 @@ for (const supportedVersion of versionsUnderTest) {
       bot = mineflayer.createBot({
         username: 'player',
         version: supportedVersion,
-        port: PORT
+        port: PORT,
+        badPacketsDir: path.join(os.tmpdir(), `mineflayer-bad-packets-${supportedVersion}`)
       })
       bot.test = {}
-      // Plugins are injected on a timer after createBot, which can lose the
-      // race against the mock server's playerJoin
-      bot.test.pluginsLoaded = new Promise(resolve => bot.once('inject_allowed', resolve))
 
       bot.test.buildChunk = () => {
         if (bot.supportFeature('tallWorld')) {
@@ -105,6 +127,49 @@ for (const supportedVersion of versionsUnderTest) {
           }
         }
         return loginPacket
+      }
+
+      bot.test.generateRespawnPacket = () => {
+        const loginPacket = bot.test.generateLoginPacket()
+        let respawnPacket
+        if (bot.supportFeature('usesLoginPacket')) {
+          loginPacket.worldName = 'minecraft:overworld'
+          loginPacket.hashedSeed = [0, 0]
+          respawnPacket = {
+            // 1.19+ the `dimension` filed is a string in respawn packet and undefined in login packet, in previous versions it's same NBT data in login/respawn
+            dimension: bot.supportFeature('dimensionDataInCodec') ? 'minecraft:overworld' : loginPacket.dimension,
+            worldName: loginPacket.worldName,
+            hashedSeed: loginPacket.hashedSeed,
+            gamemode: 0,
+            previousGamemode: 255,
+            isDebug: false,
+            isFlat: false,
+            copyMetadata: true,
+            death: {
+              dimensionName: '',
+              location: {
+                x: 0,
+                y: 0,
+                z: 0
+              }
+            }
+          }
+          if (bot.supportFeature('spawnRespawnWorldDataField')) {
+            respawnPacket = {
+              worldState: respawnPacket
+            }
+            respawnPacket.worldState.name = loginPacket.worldName
+            respawnPacket.worldState.dimension = loginPacket.dimension
+          }
+        } else {
+          respawnPacket = {
+            dimension: 0,
+            hashedSeed: [0, 0],
+            gamemode: 0,
+            levelType: 'default'
+          }
+        }
+        return respawnPacket
       }
     })
     afterEach((done) => {
@@ -196,6 +261,30 @@ for (const supportedVersion of versionsUnderTest) {
         client.on('chat', onChat)
       })
     })
+    it('dumps packets that fail to parse', (done) => {
+      bot.once('badPacket', (dump) => {
+        try {
+          assert.strictEqual(dump.mcVersion, bot.version)
+          assert.strictEqual(dump.state, 'play')
+          assert.strictEqual(dump.packetName, 'keep_alive')
+          assert.strictEqual(dump.type, 'PartialReadError')
+          assert.ok(dump.packetParsingTrace.includes('packet_keep_alive'), dump.packetParsingTrace.join(','))
+          assert.deepStrictEqual(JSON.parse(fs.readFileSync(dump.path, 'utf8')).buffer, dump.buffer)
+          fs.rmSync(dump.path)
+          done()
+        } catch (err) {
+          done(err)
+        }
+      })
+      server.on('playerJoin', (client) => {
+        client.write('login', bot.test.generateLoginPacket())
+        // keep_alive packet id without its body
+        const mappings = registry.protocol.play.toClient.types.packet[1][0].type[1].mappings
+        const id = Number(Object.keys(mappings).find(key => mappings[key] === 'keep_alive'))
+        client.writeRaw(Buffer.from([id]))
+      })
+    })
+
     it('chat before login throws a descriptive error', async () => {
       await once(bot, 'inject_allowed')
       const early = /before the client entered the play state; wait for/
@@ -206,10 +295,7 @@ for (const supportedVersion of versionsUnderTest) {
       // Replaces the server's login handler so the client is rejected while still in the login state.
       server.on('connection', (client) => {
         client.removeAllListeners('login_start')
-        client.once('login_start', async () => {
-          await bot.test.pluginsLoaded
-          client.end('kicked')
-        })
+        client.once('login_start', () => client.end('kicked'))
       })
       const [reason] = await once(bot, 'end')
       const kicked = new RegExp(`disconnected before entering the play state \\(${reason}\\)`)
@@ -376,6 +462,10 @@ for (const supportedVersion of versionsUnderTest) {
         client.write('login', bot.test.generateLoginPacket())
         await loggedIn
         bot.physicsEnabled = false
+        // The riding tick only sends inputs over a loaded chunk
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(vec3(1, 65, 1), 41)
+        client.write('map_chunk', generateChunkPacket(chunk))
         client.write(bot.registry.supportFeature('consolidatedEntitySpawnPacket') ? 'spawn_entity' : 'spawn_entity_living', {
           entityId: vehicleId,
           entityUUID: '00112233-4455-6677-8899-aabbccddeeff',
@@ -391,7 +481,7 @@ for (const supportedVersion of versionsUnderTest) {
           metadata: []
         })
         const mounted = once(bot, 'mount')
-        if (bot.registry.version['>=']('1.9')) {
+        if (bot.supportFeature('setPassengerStackEntity')) {
           client.write('set_passengers', { entityId: vehicleId, passengers: [bot.entity.id] })
         } else {
           client.write('attach_entity', { entityId: bot.entity.id, vehicleId, leash: false })
@@ -399,28 +489,23 @@ for (const supportedVersion of versionsUnderTest) {
         await mounted
       }
 
-      it('holds sneak until the server dismounts on 1.21.3+ and sends the steer_vehicle unmount flag before', (done) => {
+      it('holds sneak until the server dismounts', (done) => {
         server.on('playerJoin', async (client) => {
           try {
             await mountPig(client)
-            if (bot.supportFeature('newPlayerInputPacket')) {
-              const shifts = []
-              client.on('player_input', ({ inputs }) => {
-                shifts.push(inputs.shift)
-                if (inputs.shift) client.write('set_passengers', { entityId: vehicleId, passengers: [] })
-              })
-              await bot.dismount()
-              assert.strictEqual(bot.vehicle, null)
-              assert.strictEqual(bot.getControlState('sneak'), false)
-              await onceWithCleanup(client, 'player_input', { timeout: 1000, checkCondition: () => shifts.length >= 2 })
-              assert.deepStrictEqual(shifts, [true, false])
-            } else {
-              const [packet] = await Promise.all([
-                onceWithCleanup(client, 'steer_vehicle', { timeout: 1000 }),
-                bot.dismount()
-              ])
-              assert.strictEqual(packet[0].jump, 2)
+            const dismountOnShift = (shift) => {
+              if (!shift) return
+              if (bot.supportFeature('setPassengerStackEntity')) {
+                client.write('set_passengers', { entityId: vehicleId, passengers: [] })
+              } else {
+                client.write('attach_entity', { entityId: bot.entity.id, vehicleId: -1, leash: false })
+              }
             }
+            client.on('player_input', ({ inputs }) => dismountOnShift(inputs.shift))
+            client.on('steer_vehicle', ({ jump }) => dismountOnShift(jump & 0x02))
+            await bot.dismount()
+            assert.strictEqual(bot.vehicle, null)
+            assert.strictEqual(bot.getControlState('sneak'), false)
             done()
           } catch (err) {
             done(err)
@@ -433,7 +518,6 @@ for (const supportedVersion of versionsUnderTest) {
         server.on('playerJoin', async (client) => {
           try {
             await mountPig(client)
-            if (!bot.supportFeature('newPlayerInputPacket')) return done()
             bot.setControlState('sneak', true)
             await assert.rejects(bot.dismount())
             assert.strictEqual(bot.getControlState('sneak'), true)
@@ -628,6 +712,80 @@ for (const supportedVersion of versionsUnderTest) {
           }
         })
       })
+      it('applies the 1.21.2+ teleport velocity with its delta flags', async function () {
+        if (!registry.protocol.play.toClient.types.packet_position[1].some(field => field.name === 'dx')) {
+          this.skip()
+          return
+        }
+        const client = (await once(server, 'playerJoin'))[0]
+        await client.write('login', bot.test.generateLoginPacket())
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        await client.write('map_chunk', generateChunkPacket(chunk))
+        await once(bot, 'chunkColumnLoad')
+        // forcedMove fires at the start of the tick that answers the teleport, before that tick simulates.
+        const teleport = (extra) => {
+          const p = new Promise(resolve => bot.once('forcedMove', () => resolve(bot.entity.velocity.clone())))
+          client.write('position', { x: 1.5, y: 80, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, teleportId: 1, flags: {}, ...extra })
+          return p
+        }
+        bot.entity.velocity.set(0.25, 0.5, 0)
+        assert.deepStrictEqual(await teleport({ dx: 0.5, dz: 0.125 }), vec3(0.5, 0, 0.125), 'absolute velocity from the packet')
+        bot.entity.velocity.set(0.25, 0.5, 0)
+        assert.deepStrictEqual(await teleport({ dx: 0.5, dy: 0.5, flags: { dx: true, dy: true } }), vec3(0.75, 1, 0), 'flagged axes add to the current velocity')
+        await teleport({ yaw: 0 })
+        bot.entity.velocity.set(1, 0, 0)
+        const turned = await teleport({ yaw: 90, flags: { yawDelta: true, dx: true, dz: true } })
+        assert.ok(Math.abs(turned.x) < 1e-6 && Math.abs(turned.z - 1) < 1e-6, `yawDelta turns the velocity with the rotation change: ${turned}`)
+      })
+
+      it('answers a teleport with an ungrounded position_look and repeats the position next tick', async function () {
+        const client = (await once(server, 'playerJoin'))[0]
+        await client.write('login', bot.test.generateLoginPacket())
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        await client.write('map_chunk', generateChunkPacket(chunk))
+        await once(bot, 'chunkColumnLoad')
+        // Both teleports land in open air, so the bot falls and every tick carries a position.
+        const base = { x: 4.5, y: 80, z: 4.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, teleportId: 1, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0 }
+        const settled = once(bot, 'forcedMove')
+        await client.write('position', base)
+        await settled
+        await sleep(300)
+        const moves = []
+        const onPacket = (data, meta) => { if (['position', 'position_look', 'look', 'flying'].includes(meta.name)) moves.push({ name: meta.name, data }) }
+        client.on('packet', onPacket)
+        const p = once(bot, 'forcedMove')
+        await client.write('position', { ...base, x: 6.5, z: 6.5, yaw: 90, teleportId: 2 })
+        await p
+        await sleep(200)
+        client.off('packet', onPacket)
+        // The reply is the first packet carrying the teleported position; a tick of the fall can
+        // reach the server first.
+        const reply = moves.find(m => m.data.x === 6.5)
+        assert.ok(reply, `no packet carried the teleported position: ${JSON.stringify(moves.map(m => m.name))}`)
+        assert.strictEqual(reply.name, 'position_look')
+        assert.strictEqual(reply.data.onGround ?? reply.data.flags?.onGround, false, 'reply is not grounded')
+        if (reply.data.flags && 'hasHorizontalCollision' in reply.data.flags) assert.strictEqual(reply.data.flags.hasHorizontalCollision, false)
+      })
+
+      it('answers a forced rotation with an ungrounded look', async function () {
+        if (!registry.protocol.play.toClient.types.packet_player_rotation) {
+          this.skip()
+          return
+        }
+        const client = (await once(server, 'playerJoin'))[0]
+        await client.write('login', bot.test.generateLoginPacket())
+        const looks = []
+        client.on('packet', (data, meta) => { if (meta.name === 'look') looks.push(data) })
+        await client.write('player_rotation', { yaw: 90, pitch: 10 })
+        await sleep(100)
+        assert.strictEqual(looks.length, 1, 'one look')
+        assert.strictEqual(looks[0].yaw, 90)
+        assert.strictEqual(looks[0].pitch, 10)
+        assert.strictEqual(looks[0].onGround ?? looks[0].flags?.onGround, false)
+      })
+
       it('gravity + land on solid block + jump', (done) => {
         let y = 80
         let landed = false
@@ -662,37 +820,174 @@ for (const supportedVersion of versionsUnderTest) {
           })
         })
       })
-      it('answers a teleport airborne and then reports the standing flag it had while physics is disabled', async function () {
-        const client = (await once(server, 'playerJoin'))[0]
+      it('sends the 1.21.2+ input packets like vanilla', async function () {
+        if (!bot.supportFeature('newPlayerInputPacket')) {
+          this.skip()
+          return
+        }
+        const sneakViaEntityAction = bot.supportFeature('sneakUsesEntityAction')
+        const sent = []
+        const joined = once(server, 'playerJoin')
+        const client = (await joined)[0]
+        client.on('packet', (params, { name }) => sent.push({ name, params }))
         await client.write('login', bot.test.generateLoginPacket())
+        await client.write('update_health', { health: 20, food: 20, foodSaturation: 5 })
         const chunk = bot.test.buildChunk()
         chunk.setBlockType(pos, goldId)
         await client.write('map_chunk', generateChunkPacket(chunk))
         await once(bot, 'chunkColumnLoad')
-        const onBlock = { x: pos.x + 0.5, y: pos.y + 1, z: pos.z + 0.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, teleportId: 1, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0 }
-        const landed = once(bot, 'forcedMove')
-        await client.write('position', onBlock)
-        await landed
-        await bot.waitForTicks(5)
-        assert.strictEqual(bot.entity.onGround, true, 'standing on the block')
-        bot.physicsEnabled = false
-        const moves = []
-        const onPacket = (data, meta) => {
-          if (!['position', 'position_look', 'look', 'flying'].includes(meta.name)) return
-          moves.push({ name: meta.name, onGround: data.onGround ?? data.flags?.onGround })
+        const p1 = once(bot, 'forcedMove')
+        await client.write('position', { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: {}, teleportId: 0 })
+        await p1
+        await bot.waitForTicks(3)
+        assert.ok(sent.some(p => p.name === 'tick_end'), 'tick_end is sent every tick')
+        assert.ok(!sent.some(p => p.name === 'player_input' && p.params.inputs.shift), 'no shift before sneaking')
+
+        sent.length = 0
+        bot.setControlState('sneak', true)
+        await bot.waitForTicks(2)
+        const shift = sent.find(p => p.name === 'player_input')
+        assert.ok(shift, 'player_input on sneak')
+        const { _value, ...inputs } = shift.params.inputs // the parsed bitflags carry their raw value
+        assert.deepStrictEqual(inputs, { forward: false, backward: false, left: false, right: false, jump: false, shift: true, sprint: false })
+        const pressShift = sent.find(p => p.name === 'entity_action')
+        if (sneakViaEntityAction) {
+          assert.strictEqual(pressShift.params.actionId, 'start_sneaking', 'PRESS_SHIFT_KEY entity_action up to 1.21.5')
+          assert.ok(sent.indexOf(pressShift) < sent.indexOf(shift), 'entity_action before player_input')
+        } else {
+          assert.strictEqual(pressShift, undefined, 'no entity_action for the shift key from 1.21.6')
         }
-        client.on('packet', onPacket)
-        const pinned = once(bot, 'forcedMove')
-        await client.write('position', { ...onBlock, teleportId: 2 })
-        await pinned
-        await sleep(1500)
-        client.off('packet', onPacket)
-        // The reply to the teleport is the only packet that is not grounded.
-        const airborne = moves.filter(m => m.onGround !== true)
-        assert.deepStrictEqual(airborne, [{ name: 'position_look', onGround: false }], `the teleport reply alone is airborne: ${JSON.stringify(moves)}`)
-        const reminders = moves.slice(moves.indexOf(airborne[0]) + 1)
-        assert.ok(reminders.length > 0, 'the position reminder goes out with physics disabled')
+
+        // Sneaking blocks sprinting; the key set still changes.
+        sent.length = 0
+        bot.setControlState('sprint', true)
+        bot.setControlState('forward', true)
+        await bot.waitForTicks(2)
+        assert.ok(sent.some(p => p.name === 'player_input' && p.params.inputs.sprint && p.params.inputs.forward), 'player_input with sprint + forward')
+        assert.ok(!sent.some(p => p.name === 'entity_action' && p.params.actionId === 'start_sprinting'), 'no start_sprinting while sneaking')
+
+        sent.length = 0
+        bot.setControlState('sneak', false)
+        await bot.waitForTicks(3)
+        assert.ok(sent.some(p => p.name === 'entity_action' && p.params.actionId === 'start_sprinting'), 'start_sprinting once the sneak key is released')
+
+        sent.length = 0
+        bot.setControlState('forward', false)
+        await bot.waitForTicks(3)
+        assert.ok(sent.some(p => p.name === 'entity_action' && p.params.actionId === 'stop_sprinting'), 'stop_sprinting without a forward impulse')
+        bot.clearControlStates()
       })
+
+      it('sends the held controls again to the player a login creates', async function () {
+        const sent = []
+        const client = (await once(server, 'playerJoin'))[0]
+        client.on('packet', (params, { name }) => sent.push({ name, params }))
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        const join = async (teleportId) => {
+          await client.write('login', bot.test.generateLoginPacket())
+          await client.write('map_chunk', generateChunkPacket(chunk))
+          const moved = once(bot, 'forcedMove')
+          await client.write('position', { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0, teleportId })
+          await moved
+        }
+        const sneakSent = () => sent.some(p => (p.name === 'entity_action' && p.params.actionId === 'start_sneaking') ||
+          (p.name === 'player_input' && p.params.inputs.shift))
+        await join(0)
+        bot.setControlState('sneak', true)
+        await bot.waitForTicks(2)
+        assert.ok(sneakSent(), 'sneak is sent')
+
+        sent.length = 0
+        await join(1)
+        await bot.waitForTicks(2)
+        assert.ok(sneakSent(), 'the still-held sneak is sent to the new player')
+        bot.clearControlStates()
+      })
+
+      it('sends the held controls while riding like vanilla', async function () {
+        const vehicleId = 21
+        const client = (await once(server, 'playerJoin'))[0]
+        await bot.test.pluginsLoaded
+        const loggedIn = once(bot, 'login')
+        client.write('login', bot.test.generateLoginPacket())
+        await loggedIn
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        client.write('map_chunk', generateChunkPacket(chunk))
+        client.write(bot.registry.supportFeature('consolidatedEntitySpawnPacket') ? 'spawn_entity' : 'spawn_entity_living', {
+          entityId: vehicleId,
+          entityUUID: '00112233-4455-6677-8899-aabbccddeeff',
+          objectUUID: '00112233-4455-6677-8899-aabbccddeeff',
+          type: (bot.registry.entitiesByName.pig ?? bot.registry.entitiesByName.Pig).id, // capitalised before 1.11
+          x: 1,
+          y: 65,
+          z: 1,
+          yaw: 0,
+          pitch: 0,
+          headPitch: 0,
+          velocity: { x: 0, y: 0, z: 0 },
+          metadata: []
+        })
+        const mounted = once(bot, 'mount')
+        if (bot.supportFeature('setPassengerStackEntity')) {
+          client.write('set_passengers', { entityId: vehicleId, passengers: [bot.entity.id] })
+        } else {
+          client.write('attach_entity', { entityId: bot.entity.id, vehicleId, leash: false })
+        }
+        await mounted
+
+        const received = (name, matches) => onceWithCleanup(client, name, { timeout: 1000, checkCondition: matches })
+        if (bot.supportFeature('newPlayerInputPacket')) {
+          const actions = []
+          client.on('entity_action', ({ actionId }) => actions.push(actionId))
+          bot.setControlState('sneak', true)
+          await received('player_input', ({ inputs }) => inputs.shift)
+          assert.deepStrictEqual(actions, bot.supportFeature('sneakUsesEntityAction') ? ['start_sneaking'] : [])
+          bot.moveVehicle(0, 1)
+          await received('player_input', ({ inputs }) => inputs.forward && inputs.shift)
+        } else {
+          // steer_vehicle goes out every tick, not only when a control changes
+          await received('steer_vehicle', ({ jump }) => jump === 0)
+          bot.setControlState('sneak', true)
+          await received('steer_vehicle', ({ jump }) => jump === 0x02)
+          await received('steer_vehicle', ({ jump }) => jump === 0x02)
+          bot.moveVehicle(0, 1)
+          await received('steer_vehicle', ({ forward, jump }) => forward === 1 && jump === 0x02)
+        }
+        bot.clearControlStates()
+      })
+
+      it('stops sprinting when the controls clear with physics disabled', async function () {
+        const sent = []
+        const client = (await once(server, 'playerJoin'))[0]
+        client.on('packet', (params, { name }) => sent.push({ name, params }))
+        await client.write('login', bot.test.generateLoginPacket())
+        await client.write('update_health', { health: 20, food: 20, foodSaturation: 5 })
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        await client.write('map_chunk', generateChunkPacket(chunk))
+        await once(bot, 'chunkColumnLoad')
+        const moved = once(bot, 'forcedMove')
+        await client.write('position', { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0, teleportId: 0 })
+        await moved
+        await bot.waitForTicks(3)
+        const sprintAction = (start) => sent.some(p => p.name === 'entity_action' &&
+          (p.params.actionId === (start ? 3 : 4) || p.params.actionId === (start ? 'start_sprinting' : 'stop_sprinting')))
+        bot.setControlState('sprint', true)
+        bot.setControlState('forward', true)
+        await bot.waitForTicks(2)
+        assert.ok(sprintAction(true), 'start_sprinting')
+
+        sent.length = 0
+        bot.physicsEnabled = false
+        bot.clearControlStates()
+        // physicsTick is not emitted with physics disabled.
+        await sleep(200)
+        bot.physicsEnabled = true
+        assert.ok(sprintAction(false), 'stop_sprinting')
+      })
+
       it('no movement packets during a server transfer configuration phase', function (done) {
         // Regression test for https://github.com/PrismarineJS/mineflayer/issues/3776
         // While the client is in the configuration phase (Velocity/BungeeCord server
@@ -940,12 +1235,8 @@ for (const supportedVersion of versionsUnderTest) {
           return
         }
         let loaded = 0
-        const originalWrite = bot._client.write.bind(bot._client)
-        bot._client.write = (name, params) => {
-          if (name === 'player_loaded') loaded++
-          return originalWrite(name, params)
-        }
         const client = (await once(server, 'playerJoin'))[0]
+        client.on('player_loaded', () => { loaded++ })
         await client.write('login', bot.test.generateLoginPacket())
         await client.write('update_health', { health: 20, food: 20, foodSaturation: 5 })
         await once(bot, 'spawn')
@@ -961,7 +1252,6 @@ for (const supportedVersion of versionsUnderTest) {
         await once(bot, 'chunkColumnLoad')
         await sleep(50)
         assert.strictEqual(loaded, 1, 'once after the chunk arrives')
-        bot._client.write = originalWrite
       })
 
       it('is sent again after a login that keeps the bot alive (server transfer)', async function () {
@@ -970,12 +1260,8 @@ for (const supportedVersion of versionsUnderTest) {
           return
         }
         let loaded = 0
-        const originalWrite = bot._client.write.bind(bot._client)
-        bot._client.write = (name, params) => {
-          if (name === 'player_loaded') loaded++
-          return originalWrite(name, params)
-        }
         const client = (await once(server, 'playerJoin'))[0]
+        client.on('player_loaded', () => { loaded++ })
         const chunk = generateChunkPacket(bot.test.buildChunk())
         for (let login = 1; login <= 2; login++) {
           await client.write('login', bot.test.generateLoginPacket())
@@ -989,7 +1275,6 @@ for (const supportedVersion of versionsUnderTest) {
           await sleep(50)
           assert.strictEqual(loaded, login, `once per login, after login ${login}`)
         }
-        bot._client.write = originalWrite
       })
 
       it('ignores a previous level\'s announcement after a respawn', async function () {
@@ -998,12 +1283,8 @@ for (const supportedVersion of versionsUnderTest) {
           return
         }
         let loaded = 0
-        const originalWrite = bot._client.write.bind(bot._client)
-        bot._client.write = (name, params) => {
-          if (name === 'player_loaded') loaded++
-          return originalWrite(name, params)
-        }
         const client = (await once(server, 'playerJoin'))[0]
+        client.on('player_loaded', () => { loaded++ })
         const loginPacket = bot.test.generateLoginPacket()
         const position = { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: {}, teleportId: 0 }
         await client.write('login', loginPacket)
@@ -1028,7 +1309,6 @@ for (const supportedVersion of versionsUnderTest) {
         await once(bot, 'chunkColumnLoad')
         await sleep(50)
         assert.strictEqual(loaded, 1, 'once after the new level loads')
-        bot._client.write = originalWrite
       })
     })
 
@@ -1037,45 +1317,7 @@ for (const supportedVersion of versionsUnderTest) {
       const goldId = 41
       it('switchWorld respawn', (done) => {
         const loginPacket = bot.test.generateLoginPacket()
-        let respawnPacket
-        if (bot.supportFeature('usesLoginPacket')) {
-          loginPacket.worldName = 'minecraft:overworld'
-          loginPacket.hashedSeed = [0, 0]
-          loginPacket.entityId = 0
-          respawnPacket = {
-            // 1.19+ the `dimension` filed is a string in respawn packet and undefined in login packet, in previous versions it's same NBT data in login/respawn
-            dimension: bot.supportFeature('dimensionDataInCodec') ? 'minecraft:overworld' : loginPacket.dimension,
-            worldName: loginPacket.worldName,
-            hashedSeed: loginPacket.hashedSeed,
-            gamemode: 0,
-            previousGamemode: 255,
-            isDebug: false,
-            isFlat: false,
-            copyMetadata: true,
-            death: {
-              dimensionName: '',
-              location: {
-                x: 0,
-                y: 0,
-                z: 0
-              }
-            }
-          }
-          if (bot.supportFeature('spawnRespawnWorldDataField')) {
-            respawnPacket = {
-              worldState: respawnPacket
-            }
-            respawnPacket.worldState.name = loginPacket.worldName
-            respawnPacket.worldState.dimension = loginPacket.dimension
-          }
-        } else {
-          respawnPacket = {
-            dimension: 0,
-            hashedSeed: [0, 0],
-            gamemode: 0,
-            levelType: 'default'
-          }
-        }
+        const respawnPacket = bot.test.generateRespawnPacket()
         const chunk = bot.test.buildChunk()
         chunk.setBlockType(pos, goldId)
         const chunkPacket = generateChunkPacket(chunk)
@@ -1089,7 +1331,6 @@ for (const supportedVersion of versionsUnderTest) {
           teleportId: 0
         }
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           bot.once('respawn', () => {
             assert.ok(bot.world.getColumn(0, 0) !== undefined)
             bot.once('respawn', () => {
@@ -1220,11 +1461,15 @@ for (const supportedVersion of versionsUnderTest) {
             const pongs = seen.filter(p => p.name === 'pong')
             assert.strictEqual(pongs.length, 1, 'each ping is answered exactly once')
             const pongIndex = seen.indexOf(pongs[0])
-            // On 1.21.2+ the tick ends with tick_end after its movement packet, like vanilla
-            const before = seen.slice(0, pongIndex).filter(p => p.name !== 'tick_end').pop()
-            assert.ok(before !== undefined, 'a movement packet precedes the pong')
-            assert.ok(movementPackets.includes(before.name), `packet before pong is ${before.name}`)
-            assert.strictEqual(before.data.y, tickY, 'the pong follows the movement packet of the tick that received the ping')
+            const before = seen.slice(0, pongIndex)
+            // The pong is written at the tick boundary, after that tick's movement packet. On 1.21.2+ the tick also ends
+            // with a tick_end packet, so tick_end (not the movement packet) is what immediately precedes the pong; only
+            // tick_end may sit between the movement packet and the pong.
+            const lastMovement = [...before].reverse().find(p => movementPackets.includes(p.name))
+            assert.ok(lastMovement !== undefined, 'a movement packet precedes the pong')
+            assert.strictEqual(lastMovement.data.y, tickY, 'the pong follows the movement packet of the tick that received the ping')
+            const between = before.slice(before.lastIndexOf(lastMovement) + 1)
+            assert.ok(between.every(p => p.name === 'tick_end'), `only tick_end may separate the movement packet from the pong, saw ${between.map(p => p.name).join(', ')}`)
             done()
           } catch (err) {
             done(err)
@@ -1255,6 +1500,30 @@ for (const supportedVersion of versionsUnderTest) {
           } catch (err) {
             done(err)
           }
+        })
+      })
+
+      it('closeWindow(null) resolves without sending close_window or emitting windowClose', (done) => {
+        server.on('playerJoin', (client) => {
+          const sent = []
+          client.on('packet', (data, meta) => {
+            if (meta.name === 'close_window' || meta.name === 'window_click') sent.push(meta.name)
+          })
+          let closes = 0
+          bot.on('windowClose', () => closes++)
+          const loggedIn = once(bot, 'login')
+          client.write('login', bot.test.generateLoginPacket())
+          loggedIn
+            .then(() => {
+              assert.strictEqual(bot.currentWindow, null)
+              return bot.closeWindow(bot.currentWindow)
+            })
+            .then(() => sleep(100))
+            .then(() => {
+              assert.deepStrictEqual(sent, [])
+              assert.strictEqual(closes, 0)
+            })
+            .then(done, done)
         })
       })
 
@@ -1432,6 +1701,7 @@ for (const supportedVersion of versionsUnderTest) {
       const afterLogin = (done, body) => {
         server.on('playerJoin', async (client) => {
           try {
+            await bot.test.pluginsLoaded
             const loggedIn = once(bot, 'login')
             await client.write('login', bot.test.generateLoginPacket())
             await loggedIn
@@ -1500,6 +1770,16 @@ for (const supportedVersion of versionsUnderTest) {
           assert.ok(Math.abs(hit.z) < 1e-9, `hit z centred: ${hit}`)
           assert.ok(hit.y > 0 && hit.y < entity.height, `hit y inside the box: ${hit}`)
           assert.deepStrictEqual(looks, [entity.position.plus(hit)])
+        })
+      })
+
+      it('activateEntity from inside the hitbox hits its middle', (done) => {
+        afterLogin(done, async (sent) => {
+          bot.lookAt = async () => {}
+          const entity = { id: 7, position: vec3(3, 64, 3), height: 3, width: 2 }
+          bot.entity.position = vec3(3.2, 64, 3)
+          await bot.activateEntity(entity)
+          assert.deepStrictEqual(hitOf(sent()[0].params), vec3(0, 1.5, 0))
         })
       })
 
@@ -2001,6 +2281,47 @@ for (const supportedVersion of versionsUnderTest) {
         })
       })
 
+      it('applies the 1.21.2+ entity_teleport relative flags', async function () {
+        if (!bot.supportFeature('entityTeleportHasRelativeFlags')) {
+          this.skip()
+          return
+        }
+        const client = (await once(server, 'playerJoin'))[0]
+        const spawned = once(bot, 'entitySpawn')
+        client.write('spawn_entity', {
+          entityId: 8,
+          objectUUID: '00112233-4455-6677-8899-aabbccddeeff',
+          type: bot.registry.entitiesByName.creeper.id,
+          x: 10,
+          y: 11,
+          z: 12,
+          yaw: 0,
+          pitch: 0,
+          headPitch: 0,
+          velocity: { x: 0, y: 0, z: 0 },
+          objectData: 0
+        })
+        const entity = (await spawned)[0]
+        const teleport = async (extra) => {
+          const moved = once(bot, 'entityMoved')
+          client.write('entity_teleport', { entityId: 8, x: 10, y: 11, z: 12, dx: 0, dy: 0, dz: 0, yaw: 0, pitch: 0, flags: {}, onGround: false, ...extra })
+          await moved
+        }
+        entity.velocity.set(0.25, 0.5, 0)
+        await teleport({ x: 1, y: 2, z: 3, dx: 0.5, dz: 0.125, yaw: 90, pitch: 10 })
+        assert.deepStrictEqual(entity.position, vec3(1, 2, 3), 'absolute position')
+        assert.deepStrictEqual(entity.velocity, vec3(0.5, 0, 0.125), 'absolute velocity from the packet')
+        assert.ok(Math.abs(entity.yaw - Math.PI / 2) < 1e-6 && Math.abs(entity.pitch + 10 * Math.PI / 180) < 1e-6, 'float rotation')
+        await teleport({ x: 1, y: -1, dx: 0.5, dy: 0.5, yaw: 90, flags: { x: true, y: true, dx: true, dy: true, yaw: true } })
+        assert.deepStrictEqual(entity.position, vec3(2, 1, 12), 'flagged axes add to the current position')
+        assert.deepStrictEqual(entity.velocity, vec3(1, 0.5, 0), 'flagged axes add to the current velocity, the rest are absolute')
+        assert.ok(Math.abs(entity.yaw) < 1e-6, 'flagged yaw adds to the current yaw')
+        await teleport({ yaw: 0 })
+        entity.velocity.set(1, 0, 0)
+        await teleport({ yaw: 90, flags: { yawDelta: true, dx: true, dz: true } })
+        assert.ok(Math.abs(entity.velocity.x) < 1e-6 && Math.abs(entity.velocity.z - 1) < 1e-6, `yawDelta turns the velocity with the rotation change: ${entity.velocity}`)
+      })
+
       it('\'itemDrop\' event', function (done) {
         const itemData = {
           itemId: 149,
@@ -2187,7 +2508,6 @@ for (const supportedVersion of versionsUnderTest) {
     describe('activateBlock', () => {
       it('defaults the cursor to the centre of the clicked face and swings after use_item_on', (done) => {
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           const loggedIn = once(bot, 'login')
           await client.write('login', bot.test.generateLoginPacket())
           await loggedIn
@@ -2214,7 +2534,6 @@ for (const supportedVersion of versionsUnderTest) {
     describe('activateItem', () => {
       it('does nothing with an empty hand', (done) => {
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           const loggedIn = once(bot, 'login')
           await client.write('login', bot.test.generateLoginPacket())
           await loggedIn
@@ -2230,6 +2549,47 @@ for (const supportedVersion of versionsUnderTest) {
             bot.activateItem()
             assert.deepStrictEqual(writes, [bot.supportFeature('useItemWithOwnPacket') ? 'use_item' : 'block_place'])
             assert.strictEqual(bot.usingHeldItem, true)
+            done()
+          } catch (err) {
+            done(err)
+          }
+        })
+      })
+
+      // 1.21.3+ name a cooldown's group, which is the item's id unless its use_cooldown component
+      // names another; before, they name the item
+      it('stops using the held item when it goes on cooldown, not another item', (done) => {
+        const cooldownFields = require('minecraft-data')(supportedVersion).protocol.play.toClient.types.packet_set_cooldown?.[1].map(f => f.name)
+        if (!cooldownFields) return done() // 1.8 has no item cooldowns
+        const byGroup = cooldownFields.includes('cooldownGroup')
+        const cooldown = (name, group) => byGroup
+          ? { cooldownGroup: group ?? `minecraft:${name}`, cooldownTicks: 20 }
+          : { itemID: registry.itemsByName[name].id, cooldownTicks: 20 }
+        server.on('playerJoin', async (client) => {
+          await bot.test.pluginsLoaded
+          const loggedIn = once(bot, 'login')
+          await client.write('login', bot.test.generateLoginPacket())
+          await loggedIn
+          bot._client.write = () => {}
+          bot.quickBarSlot = 0
+          const held = new Item(registry.itemsByName.ender_pearl.id, 4)
+          bot.inventory.updateSlot(bot.QUICK_BAR_START, held)
+          const usingAfter = async (packet) => {
+            bot.activateItem()
+            const received = once(bot._client, 'set_cooldown')
+            client.write('set_cooldown', packet)
+            await received
+            return bot.usingHeldItem
+          }
+          try {
+            assert.strictEqual(await usingAfter(cooldown('snowball')), true)
+            assert.strictEqual(await usingAfter(cooldown('ender_pearl')), false)
+            if (byGroup) {
+              // An item whose use_cooldown component names a group goes on cooldown with that group
+              held.componentMap.set('use_cooldown', { type: 'use_cooldown', data: { seconds: 1, cooldownGroup: 'minecraft:pearls' } })
+              assert.strictEqual(await usingAfter(cooldown('ender_pearl')), true)
+              assert.strictEqual(await usingAfter(cooldown('ender_pearl', 'minecraft:pearls')), false)
+            }
             done()
           } catch (err) {
             done(err)
@@ -2361,7 +2721,6 @@ for (const supportedVersion of versionsUnderTest) {
     describe('generic place', () => {
       it('swings the arm after use_item_on', (done) => {
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           const loggedIn = once(bot, 'login')
           await client.write('login', bot.test.generateLoginPacket())
           await loggedIn
@@ -2458,9 +2817,140 @@ for (const supportedVersion of versionsUnderTest) {
           client.write('window_items', windowItemsPacket(1, emptyItems(chestData.slots)))
         })
       })
+
+      it('drops the open window on a re-login without telling the server', (done) => {
+        // Vanilla sends no close_window for the window open before a re-login
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.on('close_window', () => {
+            done(new Error('close_window was sent to the new server'))
+          })
+
+          bot.once('windowOpen', (window) => {
+            bot.once('windowClose', (closed) => {
+              assert.strictEqual(closed, window)
+              assert.strictEqual(bot.currentWindow, null)
+              setTimeout(done, 100)
+            })
+            client.write('login', bot.test.generateLoginPacket())
+          })
+
+          client.write('open_window', openWindowPacket(1, chestData))
+          client.write('window_items', windowItemsPacket(1, emptyItems(chestData.slots)))
+        })
+      })
+
+      it('closes the open window on respawn like vanilla', (done) => {
+        // Vanilla sends close_window for the open window before handling a respawn
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+
+          bot.once('windowOpen', (window) => {
+            let closed = null
+            bot.once('windowClose', (w) => { closed = w })
+            client.once('close_window', (packet) => {
+              assert.strictEqual(packet.windowId, window.id)
+              assert.strictEqual(closed, window)
+              assert.strictEqual(bot.currentWindow, null)
+              done()
+            })
+            client.write('respawn', bot.test.generateRespawnPacket())
+          })
+
+          client.write('open_window', openWindowPacket(1, chestData))
+          client.write('window_items', windowItemsPacket(1, emptyItems(chestData.slots)))
+        })
+      })
+
+      it('clicks carry the stateId of the window they click, not the last one synced', function (done) {
+        if (!bot.supportFeature('stateIdUsed')) {
+          this.skip()
+          return
+        }
+        const clicks = []
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.on('window_click', (packet) => {
+            clicks.push(packet)
+            if (clicks.length < 2) return
+            try {
+              assert.deepStrictEqual(clicks.map(c => [c.windowId, c.stateId]), [[1, 5], [0, 9]])
+              done()
+            } catch (err) {
+              done(err)
+            }
+          })
+
+          bot.once('windowOpen', async () => {
+            // a player-inventory sync while the container is open
+            client.write('set_slot', { windowId: 0, stateId: 9, slot: 36, item: Item.toNotch(null) })
+            await sleep(50)
+            await bot.clickWindow(0, 0, 0)
+            bot.closeWindow(bot.currentWindow)
+            await sleep(50)
+            await bot.clickWindow(36, 0, 0)
+          })
+
+          client.write('open_window', openWindowPacket(1, chestData))
+          client.write('window_items', { ...windowItemsPacket(1, emptyItems(chestData.slots)), stateId: 5 })
+        })
+      })
     })
 
     describe('scoreboard', () => {
+      // Servers build an objective title out of `extra` far more often than they put the text at the top level.
+      function objectiveTitle (parts) {
+        if (!registry.supportFeature('chatPacketsUseNbtComponents')) return JSON.stringify({ text: '', extra: parts })
+        return nbt.comp({
+          text: nbt.string(''),
+          extra: nbt.list(nbt.comp(parts.map(part => {
+            const c = { text: nbt.string(part.text) }
+            if (part.color) c.color = nbt.string(part.color)
+            return c
+          })))
+        })
+      }
+
+      it('reads a component objective title', async () => {
+        server.on('playerJoin', (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.write('scoreboard_objective', {
+            name: 'obj',
+            action: 0,
+            displayText: objectiveTitle([{ text: 'Bed', color: 'yellow' }, { text: 'Wars' }]),
+            type: 'integer'
+          })
+          client.write('scoreboard_display_objective', { position: 1, name: 'obj' })
+        })
+
+        const [, scoreboard] = await onceWithCleanup(bot, 'scoreboardPosition', { timeout: 5000 })
+        assert.strictEqual(scoreboard.title.toString(), 'BedWars')
+        assert.strictEqual(bot.scoreboard.sidebar.title.toString(), 'BedWars')
+        assert.strictEqual(bot.scoreboards.obj.title.toString(), 'BedWars')
+      })
+
+      it('reads a component title sent as an objective update', async () => {
+        server.on('playerJoin', async (client) => {
+          client.write('login', bot.test.generateLoginPacket())
+          client.write('scoreboard_objective', {
+            name: 'obj',
+            action: 0,
+            displayText: objectiveTitle([{ text: 'first' }]),
+            type: 'integer'
+          })
+          await once(bot, 'scoreboardCreated')
+          client.write('scoreboard_objective', {
+            name: 'obj',
+            action: 2,
+            displayText: objectiveTitle([{ text: 'sec', color: 'red' }, { text: 'ond' }]),
+            type: 'integer'
+          })
+        })
+
+        const [scoreboard] = await onceWithCleanup(bot, 'scoreboardTitleChanged', { timeout: 5000 })
+        assert.strictEqual(scoreboard.title.toString(), 'second')
+      })
+
       it('enumerates only the display slots that hold an objective', async () => {
         server.on('playerJoin', (client) => client.write('login', bot.test.generateLoginPacket()))
         await once(bot, 'login')
@@ -2475,143 +2965,9 @@ for (const supportedVersion of versionsUnderTest) {
         assert.deepStrictEqual(Object.keys(bot.scoreboard), [])
         assert.strictEqual(bot.scoreboard.sidebar, undefined)
       })
-
-      // 1.20.3 dropped the action field from the score packet and moved removal to reset_score.
-      const objectiveFields = registry.protocol?.play?.toClient?.types?.packet_scoreboard_objective?.[1] ?? []
-      const scoreHasAction = (registry.protocol?.play?.toClient?.types?.packet_scoreboard_score?.[1] ?? [])
-        .some(field => field.name === 'action')
-      // 1.8 to 1.12 name the objective's render type; later versions send its index.
-      const objectiveType = objectiveFields.find(f => f.name === 'type')?.type?.[1]?.fields?.[0] === 'string' ? 'integer' : 0
-
-      const addObjective = (client, name, title) => client.write('scoreboard_objective', {
-        name, action: 0, displayText: chatText(title), type: objectiveType
-      })
-      const setScore = (client, objective, entity, value, display) => client.write('scoreboard_score', scoreHasAction
-        ? { itemName: entity, action: 0, scoreName: objective, value }
-        : { itemName: entity, scoreName: objective, value, display_name: display })
-
-      // Every packet the server sends on join lands in one batch, so the events they raise are all
-      // emitted before the first await returns; each test collects them instead of awaiting in turn.
-      function collect (...events) {
-        const seen = []
-        for (const name of events) bot.on(name, (...args) => seen.push([name, ...args]))
-        return seen
-      }
-      // Resolves once the bot has joined and the packets written for it have been handled.
-      function onJoin (write) {
-        return new Promise(resolve => {
-          server.on('playerJoin', (client) => {
-            write(client)
-            sleep(100).then(resolve)
-          })
-        })
-      }
-
-      it('reads the objective title, whatever shape the version sends it in', async () => {
-        const seen = collect('scoreboardCreated', 'scoreboardPosition')
-        await onJoin((client) => {
-          addObjective(client, 'kills', 'Total Kills')
-          client.write('scoreboard_display_objective', { position: 1, name: 'kills' })
-        })
-        const created = seen.find(e => e[0] === 'scoreboardCreated')
-        assert.ok(created, 'no scoreboardCreated')
-        assert.strictEqual(created[1].title.toString(), 'Total Kills')
-        assert.ok(seen.some(e => e[0] === 'scoreboardPosition'), 'no scoreboardPosition')
-        assert.strictEqual(bot.scoreboard.sidebar, bot.scoreboards.kills)
-      })
-
-      it('records a score and drops it again', async () => {
-        const seen = collect('scoreUpdated', 'scoreRemoved')
-        let client
-        await onJoin((c) => {
-          client = c
-          addObjective(c, 'kills', 'Total Kills')
-          setScore(c, 'kills', 'wvffle', 7)
-        })
-        const updated = seen.find(e => e[0] === 'scoreUpdated')
-        assert.ok(updated, 'no scoreUpdated')
-        const [, scoreboard, added] = updated
-        assert.strictEqual(added.value, 7)
-        assert.strictEqual(scoreboard.itemsMap.wvffle, added)
-        assert.strictEqual(added.displayName.toString(), 'wvffle')
-
-        if (scoreHasAction) client.write('scoreboard_score', { itemName: 'wvffle', action: 1, scoreName: 'kills' })
-        else client.write('reset_score', { entity_name: 'wvffle', objective_name: 'kills' })
-        await sleep(100)
-        const removal = seen.find(e => e[0] === 'scoreRemoved')
-        assert.ok(removal, 'no scoreRemoved')
-        assert.strictEqual(removal[2].value, 7)
-        assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle, undefined)
-      })
-
-      if (!scoreHasAction) {
-        it('draws a score with the display name the server sends for it', async () => {
-          const seen = collect('scoreUpdated')
-          await onJoin((client) => {
-            addObjective(client, 'kills', 'Total Kills')
-            setScore(client, 'kills', 'wvffle', 3, chatText('Wvffle the Great'))
-          })
-          assert.ok(seen.length, 'no scoreUpdated')
-          assert.strictEqual(seen[0][2].displayName.toString(), 'Wvffle the Great')
-        })
-
-        it('drops a score from every objective when reset_score names none', async () => {
-          let client
-          await onJoin((c) => {
-            client = c
-            addObjective(c, 'kills', 'Total Kills')
-            addObjective(c, 'deaths', 'Total Deaths')
-            setScore(c, 'kills', 'wvffle', 7)
-            setScore(c, 'deaths', 'wvffle', 2)
-          })
-          assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle.value, 7)
-          assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle.value, 2)
-          client.write('reset_score', { entity_name: 'wvffle', objective_name: undefined })
-          await sleep(100)
-          assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle, undefined)
-          assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle, undefined)
-        })
-      }
-
-      it('leaves every objective alone when a removal names an unknown one', async () => {
-        const seen = collect('scoreRemoved')
-        let client
-        await onJoin((c) => {
-          client = c
-          addObjective(c, 'kills', 'Total Kills')
-          addObjective(c, 'deaths', 'Total Deaths')
-          setScore(c, 'kills', 'wvffle', 7)
-          setScore(c, 'deaths', 'wvffle', 2)
-        })
-        if (scoreHasAction) client.write('scoreboard_score', { itemName: 'wvffle', action: 1, scoreName: 'missing' })
-        else client.write('reset_score', { entity_name: 'wvffle', objective_name: 'missing' })
-        await sleep(100)
-        assert.strictEqual(seen.length, 0)
-        assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle.value, 7)
-        assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle.value, 2)
-      })
     })
 
     describe('teams', () => {
-      function teamPacket (teamName, mode, players) {
-        const text = registry.supportFeature('teamUsesChatComponents') ? chatText : (s) => s
-        const modes = ['add', 'remove', 'change', 'join', 'leave']
-        return {
-          team: teamName,
-          mode: registry.supportFeature('teamModeUsesStringMapper') ? modes[mode] : mode,
-          name: text(teamName),
-          prefix: text(''),
-          suffix: text(''),
-          friendlyFire: 1,
-          flags: { friendly_fire: true, see_friendly_invisible: false },
-          nameTagVisibility: 'always',
-          collisionRule: 'always',
-          color: 0,
-          formatting: 0,
-          players
-        }
-      }
-
       it('teamRemoved carries the team that was removed', async () => {
         const packetName = bot.supportFeature('teamUsesScoreboard') ? 'scoreboard_team' : 'teams'
         const [client] = await once(server, 'playerJoin')
@@ -2664,26 +3020,6 @@ for (const supportedVersion of versionsUnderTest) {
     })
 
     describe('scoreboard reset on login', () => {
-      function teamAddPacket (teamName, players) {
-        const text = registry.supportFeature('teamUsesChatComponents') ? chatText : (s) => s
-        const mappedMode = registry.version['>=']('1.21.6')
-        const enumRules = registry.version['>=']('1.21.5') && registry.version['<']('1.21.6')
-        return {
-          team: teamName,
-          mode: mappedMode ? 'add' : 0,
-          name: text(teamName),
-          prefix: text(''),
-          suffix: text(''),
-          friendlyFire: 1,
-          flags: { friendly_fire: true, see_friendly_invisible: false },
-          nameTagVisibility: enumRules ? 0 : 'always',
-          collisionRule: enumRules ? 0 : 'always',
-          color: 0,
-          formatting: 0,
-          players
-        }
-      }
-
       function objectiveAddPacket (name) {
         const typeField = registry.protocol.play.toClient.types.packet_scoreboard_objective[1].find(f => f.name === 'type')
         return {
@@ -2722,7 +3058,6 @@ for (const supportedVersion of versionsUnderTest) {
       it('clears teams and objectives on login but not on respawn', async () => {
         const teamPacketName = bot.supportFeature('teamUsesScoreboard') ? 'scoreboard_team' : 'teams'
         const [client] = await once(server, 'playerJoin')
-        await bot.test.pluginsLoaded
         const loginPacket = bot.test.generateLoginPacket()
         const teams = bot.teams
         const teamMap = bot.teamMap
@@ -2730,7 +3065,7 @@ for (const supportedVersion of versionsUnderTest) {
         const positions = bot.scoreboard
 
         await client.write('login', loginPacket)
-        client.write(teamPacketName, teamAddPacket('red', ['alice']))
+        client.write(teamPacketName, teamPacket('red', 0, ['alice']))
         await once(bot, 'teamCreated')
         client.write('scoreboard_objective', objectiveAddPacket('kills'))
         client.write('scoreboard_display_objective', { position: 1, name: 'kills' })
@@ -2759,7 +3094,7 @@ for (const supportedVersion of versionsUnderTest) {
         assert.strictEqual(bot.scoreboard.belowName, undefined)
         assert.strictEqual(removedEvents, 0)
 
-        client.write(teamPacketName, teamAddPacket('red', ['bob']))
+        client.write(teamPacketName, teamPacket('red', 0, ['bob']))
         await once(bot, 'teamCreated')
         assert.deepStrictEqual(bot.teams.red.members, ['bob'])
         assert.strictEqual(bot.teamMap.alice, undefined)
@@ -2779,7 +3114,6 @@ for (const supportedVersion of versionsUnderTest) {
           return
         }
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           const loggedIn = once(bot, 'login')
           await client.write('login', bot.test.generateLoginPacket())
           await loggedIn
@@ -2814,7 +3148,6 @@ for (const supportedVersion of versionsUnderTest) {
           return
         }
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           const loggedIn = once(bot, 'login')
           await client.write('login', bot.test.generateLoginPacket())
           await loggedIn
@@ -2916,7 +3249,6 @@ for (const supportedVersion of versionsUnderTest) {
         const testYaw = 1.5
         const testPitch = -0.3
         server.on('playerJoin', async (client) => {
-          await bot.test.pluginsLoaded
           await client.write('login', bot.test.generateLoginPacket())
           await client.write('position', {
             x: 0,
@@ -3132,7 +3464,8 @@ for (const supportedVersion of versionsUnderTest) {
               bot._client.emit('position', { ...teleport, yaw: 30, teleportId: 1 })
               bot._client.emit('player_rotation', { yaw: 90, pitch: 0 })
               await once(bot, 'forcedMove')
-              assert.deepStrictEqual(replies, [30], 'the teleport is answered with its own rotation')
+              // The reply leaves the last-sent record alone, so that tick's movement packet may follow it.
+              assert.strictEqual(replies[0], 30, 'the teleport is answered with its own rotation')
               assert.strictEqual(bot.entity.yaw, require('../lib/conversions').fromNotchianYaw(90), 'the later rotation wins')
             } finally {
               bot._client.write = write

@@ -30,11 +30,10 @@ function inject (bot, { hideErrors }) {
   let eatingTask = createDoneTask()
 
   let nextActionNumber = 0 // < 1.17
-  let stateId = -1
-  if (bot.supportFeature('stateIdUsed')) {
-    const listener = packet => { stateId = packet.stateId }
-    bot._client.on('window_items', listener)
-    bot._client.on('set_slot', listener)
+  // windowId -> stateId of the last window_items or set_slot applied to that window
+  const stateIds = new Map()
+  function recordStateId (window, packet) {
+    if (packet.stateId !== undefined) stateIds.set(window.id, packet.stateId)
   }
   const windowClickQueue = []
   let windowItems
@@ -93,8 +92,20 @@ function inject (bot, { hideErrors }) {
     bot.usingHeldItem = false
   })
 
+  // 1.21.3+ name the cooldown's group instead of the item: the item's id, unless its
+  // use_cooldown component names another group
+  function isOnCooldown (item, packet) {
+    if (packet.cooldownGroup === undefined) return item.type === packet.itemID
+    const group = item.componentMap?.get('use_cooldown')?.data?.cooldownGroup ?? `minecraft:${item.name}`
+    return withNamespace(group) === withNamespace(packet.cooldownGroup)
+  }
+
+  function withNamespace (id) {
+    return id.includes(':') ? id : `minecraft:${id}`
+  }
+
   bot._client.on('set_cooldown', (packet) => {
-    if (bot.heldItem && bot.heldItem.type !== packet.itemID) return
+    if (bot.heldItem && !isOnCooldown(bot.heldItem, packet)) return
     if (!eatingTask.done) {
       eatingTask.finish()
     }
@@ -247,78 +258,6 @@ function inject (bot, { hideErrors }) {
 
     // swing arm animation
     bot.swingArm()
-  }
-
-  // Where the line from the eye to the middle of the entity's bounding box enters the box, relative
-  // to the entity: the hit vanilla reports for a player looking at the entity's middle.
-  function hitVector (entity) {
-    // prismarine-entity starts every entity at a zero size and only a type minecraft-data knows is
-    // given one, so a flat box means the bot does not know the size: the entity position stands in.
-    if (!entity.width || !entity.height) return new Vec3(0, 0, 0)
-    const middle = new Vec3(0, entity.height / 2, 0)
-    const eye = bot.entity.position.offset(0, bot.entity.eyeHeight, 0).minus(entity.position)
-    const toMiddle = middle.minus(eye)
-    // Slab test: parameters along the line run from 0 at the eye to 1 at the middle, each axis bounds
-    // the box to a parameter interval, and the line enters the box at the latest interval start. An
-    // axis the line does not move along already has the middle's coordinate, inside the box.
-    const half = entity.width / 2
-    let entry = 0
-    for (const [min, max, at, step] of [[-half, half, eye.x, toMiddle.x], [0, entity.height, eye.y, toMiddle.y], [-half, half, eye.z, toMiddle.z]]) {
-      if (step === 0) continue
-      entry = Math.max(entry, Math.min((min - at) / step, (max - at) / step))
-    }
-    // Every interval starts behind the eye: the eye is inside the box.
-    if (entry === 0) return middle
-    return eye.plus(toMiddle.scaled(entry))
-  }
-
-  // 26.1 folded interact_at into interact: one use_entity carries the hit point. Earlier versions send
-  // interact_at, then interact. The server applies the packet's sneak flag as the player's shift state.
-  const interactEntity = bot.supportFeature('useEntityHasLocation')
-    ? (entity, hit) => {
-        bot._client.write('use_entity', {
-          target: entity.id,
-          hand: 0, // main hand
-          location: hit,
-          sneaking: bot.getControlState('sneak')
-        })
-      }
-    : (entity, hit) => {
-        const sneaking = bot.getControlState('sneak')
-        bot._client.write('use_entity', {
-          target: entity.id,
-          mouse: 2, // interact at
-          x: hit.x,
-          y: hit.y,
-          z: hit.z,
-          hand: 0, // main hand
-          sneaking
-        })
-        bot._client.write('use_entity', {
-          target: entity.id,
-          mouse: 0, // interact
-          hand: 0, // main hand
-          sneaking
-        })
-      }
-
-  async function activateEntity (entity) {
-    const hit = hitVector(entity)
-    await bot.lookAt(entity.position.plus(hit), false)
-    interactEntity(entity, hit)
-  }
-
-  async function activateEntityAt (entity, position) {
-    await bot.lookAt(position, false)
-    interactEntity(entity, position.minus(entity.position))
-  }
-
-  function useOn (entity) {
-    interactEntity(entity, hitVector(entity))
-  }
-
-  function mount (entity) {
-    interactEntity(entity, hitVector(entity))
   }
 
   async function transfer (options) {
@@ -480,15 +419,23 @@ function inject (bot, { hideErrors }) {
   // never sent. A rejected click already carries the full inventory, so the
   // sync click's outcome is not an error.
   function closeWindow (window) {
+    // Callers pass bot.currentWindow, which is null once the window has closed itself.
+    if (!window) return Promise.resolve()
     bot._client.write('close_window', {
       windowId: window.id
     })
     copyInventory(window)
+    if (window !== bot.inventory) stateIds.delete(window.id)
     lastClosedWindow = window
-    bot.currentWindow = null
-    bot.emit('windowClose', window)
+    dropWindow(window)
     if (bot.supportFeature('stateIdUsed')) return Promise.resolve()
     return clickWindow(-999, 0, 0).catch(() => {})
+  }
+
+  // Client-side only: no close_window is sent
+  function dropWindow (window) {
+    bot.currentWindow = null
+    bot.emit('windowClose', window)
   }
 
   function copyInventory (window) {
@@ -684,7 +631,7 @@ function inject (bot, { hideErrors }) {
     if (bot.supportFeature('stateIdUsed')) { // 1.17.1 +
       bot._client.write('window_click', {
         windowId: window.id,
-        stateId,
+        stateId: stateIds.get(window.id) ?? -1,
         slot,
         mouseButton,
         mode,
@@ -795,6 +742,7 @@ function inject (bot, { hideErrors }) {
         const item = Item.fromNotch(windowItems.items[i])
         window.updateSlot(i, item)
       }
+      recordStateId(window, windowItems)
       // consume the buffer so a later window reusing this id cannot open
       // with stale contents
       windowItems = null
@@ -822,28 +770,32 @@ function inject (bot, { hideErrors }) {
   bot._client.on('close_window', (packet) => {
     // close window
     const oldWindow = bot.currentWindow
+    if (oldWindow) stateIds.delete(oldWindow.id)
     bot.currentWindow = null
     bot.emit('windowClose', oldWindow)
   })
-  // Window ids restart with the player entity, so a later window can reuse
-  // the closed one's id and its early sync must not be taken for a trailing one.
-  bot._client.on('respawn', () => { lastClosedWindow = null })
+  // The server receiving a re-login has no window open; vanilla sends no
+  // close_window for the one that was open
   bot._client.on('login', () => {
-    lastClosedWindow = null
-    // close window when switch subserver
     windowItems = null
     lastClosedWindow = null
-    const oldWindow = bot.currentWindow
-    if (!oldWindow) return
-    bot.currentWindow = null
-    bot.emit('windowClose', oldWindow)
+    stateIds.clear()
+    if (bot.currentWindow) dropWindow(bot.currentWindow)
   })
-  // A respawn (death or dimension change) replaces the server-side player
-  // entity and resets its window id counter, so pending window state can
-  // never describe a post-respawn window
+  // Vanilla sends close_window for the open window before handling a
+  // respawn. A respawn restarts the window id counter: pending window state
+  // never describes a post-respawn window, and a later window may reuse a
+  // closed one's id
   bot._client.on('respawn', () => {
+    const window = bot.currentWindow
+    if (window) {
+      bot._client.write('close_window', { windowId: window.id })
+      copyInventory(window)
+      dropWindow(window)
+    }
     windowItems = null
     lastClosedWindow = null
+    stateIds.clear()
   })
   bot._setSlot = (slotId, newItem, window = bot.inventory) => {
     // set slot
@@ -875,6 +827,7 @@ function inject (bot, { hideErrors }) {
       }
       return
     }
+    recordStateId(window, packet)
     const newItem = Item.fromNotch(packet.item)
     bot._setSlot(packet.slot, newItem, window)
   })
@@ -922,6 +875,7 @@ function inject (bot, { hideErrors }) {
     }
 
     // set window items
+    recordStateId(window, packet)
     for (let i = 0; i < packet.items.length; ++i) {
       const item = Item.fromNotch(packet.items[i])
       window.updateSlot(i, item)
@@ -973,10 +927,6 @@ function inject (bot, { hideErrors }) {
   }
 
   bot.activateBlock = activateBlock
-  bot.activateEntity = activateEntity
-  bot.activateEntityAt = activateEntityAt
-  bot.useOn = useOn
-  bot.mount = mount
   bot.consume = consume
   bot.activateItem = activateItem
   bot.deactivateItem = deactivateItem

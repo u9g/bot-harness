@@ -44,7 +44,8 @@ const plugins = {
   place_entity: require('./plugins/place_entity'),
   generic_place: require('./plugins/generic_place'),
   particle: require('./plugins/particle'),
-  sequence: require('./plugins/sequence')
+  sequence: require('./plugins/sequence'),
+  packet_dump: require('./plugins/packet_dump')
 }
 
 const minecraftData = require('minecraft-data')
@@ -133,7 +134,10 @@ function createBot (options = {}) {
     bot.version = versionData.minecraftVersion
     options.version = versionData.minecraftVersion
     bot.supportFeature = bot.registry.supportFeature
-    setTimeout(() => bot.emit('inject_allowed'), 0)
+    // After createBot returns, so callers can still listen for inject_allowed,
+    // but before any socket callback: a packet read before the plugins
+    // inject has no listener and is lost.
+    process.nextTick(() => bot.emit('inject_allowed'))
   }
   return bot
 }

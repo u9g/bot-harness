@@ -180,6 +180,7 @@
       - ["kicked" (reason, loggedIn)](#kicked-reason-loggedin)
       - ["end" (reason)](#end-reason)
       - ["error" (err)](#error-err)
+      - ["badPacket" (dump)](#badpacket-dump)
       - ["spawnReset"](#spawnreset)
       - ["death"](#death)
       - ["health"](#health)
@@ -680,7 +681,7 @@ Name of the scoreboard.
 
 #### ScoreBoard.title
 
-The title of the scoreboard (does not always equal the name), as a `ChatMessage`.
+The title of the scoreboard as a [ChatMessage](https://github.com/PrismarineJS/prismarine-chat) (does not always equal the name). Servers send it as a chat component, so `title.toString()` for the plain text and `title.toAnsi()` to keep its colours.
 
 #### ScoreBoard.itemsMap
 
@@ -691,9 +692,6 @@ An object with all items in the scoreboard in it
   dzikoysk: { name: 'dzikoysk', value: 6 }
 }
 ```
-
-Each item also has a `displayName` (a `ChatMessage`): the component the server sent with the score
-on 1.20.3+, otherwise the item's name formatted by its team.
 
 #### ScoreBoard.items
 
@@ -824,6 +822,8 @@ Create and return an instance of the class bot.
  * client : an instance of node-minecraft-protocol, if not specified, mineflayer makes its own client. This can be used to enable using mineflayer through a proxy of many clients or a vanilla client and a mineflayer client.
  * brand : the brand name for the client to use. Defaults to vanilla. Can be used to simulate custom clients for servers that require it.
  * respawn : when set to false disables bot from automatically respawning, defaults to true.
+ * dumpBadPackets : when a packet from the server cannot be parsed, save it (raw bytes and parser trace) to a local JSON file so it can be attached to a GitHub issue. Nothing is sent anywhere. Defaults to true. See the ["badPacket"](#badpacket-dump) event.
+ * badPacketsDir : directory where unparsable packets are saved, defaults to `~/.mineflayer/bad-packets`.
  * plugins : object : defaults to {}
    - pluginName : false : don't load internal plugin with given name ie. `pluginName`
    - pluginName : true : load internal plugin with given name ie. `pluginName` even though loadInternalplugins is set to false
@@ -930,7 +930,7 @@ What the server last allowed the player in the abilities packet.
 
 #### bot.physicsEnabled
 
-Enable physics, default true. While it is false the position reminder still goes out every second and carries `bot.entity.onGround` as it was left: a teleport does not change it, and nothing simulates it.
+Enable physics, default true.
 
 #### bot.player
 
@@ -1339,6 +1339,14 @@ Emitted when you are no longer connected to the server.
 
 Emitted when an error occurs.
 
+#### "badPacket" (dump)
+
+Emitted when a packet from the server could not be parsed (or was not fully read) and was saved to disk (see the `dumpBadPackets` option).
+`dump` contains `mcVersion`, `state`, `packetId`, `packetName`, `type` (`'ReadError'`, `'PartialReadError'` or `'SizeMismatch'`),
+`packetParsingTrace` (the protocol types being read when it failed, e.g. `['readVarInt', 'SlotComponent', 'Slot', 'packet_set_slot']`),
+`buffer` (the raw packet as hex) and `path` (the file it was written to).
+The file may contain chat or other data sent by the server, review it before sharing it on a GitHub issue.
+
 #### "spawnReset"
 
 Fires when you cannot spawn in your bed and your spawn point gets reset.
@@ -1542,7 +1550,7 @@ Fires when you begin using a workbench, chest, brewing stand, etc.
 
 #### "windowClose" (window)
 
-Fires when you may no longer work with a workbench, chest, etc.
+Fires when you may no longer work with a workbench, chest, etc. Also fires when a respawn or a re-login (proxy server switch) discards the open window.
 
 #### "sleep"
 
@@ -1872,6 +1880,8 @@ You may use bot.lookAt in conjunction with this to control movement. The jumper.
  * `control` - one of ['forward', 'back', 'left', 'right', 'jump', 'sprint', 'sneak']
  * `state` - `true` or `false`
 
+`sprint` is the sprint key: like the vanilla client, the bot only sprints (and tells the server so) while it is moving forward on the ground with more than 6 food, not sneaking, not using an item, not blinded and not in water; sprinting stops against a wall.
+
 #### bot.getControlState(control)
 
 Returns true if a control state is toggled.
@@ -2003,13 +2013,6 @@ It rejects as soon as the server refuses the placement (for example because an e
 
 The new block will be placed at `referenceBlock.position.plus(faceVector)`. Rejects immediately if that position is already occupied by a block the new one cannot replace, as defined by the server's `minecraft:replaceable` block tag (air, liquids, fire, snow layers and replaceable plants such as grass or vines; a built-in list is used on servers older than 1.20 that do not send the tag).
 
-The face and the cursor position in the packet are taken from a raycast along the bot's own look,
-the way the vanilla client derives them, so the server sees a hit the bot could have made. When no
-point on the requested face is in view — the side faces of the block you are standing on never are,
-which is why players bridge by sneaking over the edge — the requested face is sent anyway, as
-before. Set `bot.placeFaceStrict = true` (or pass `strictFace: true` to `bot._genericPlace`) to
-reject those instead: servers that validate the hit drop them silently.
-
 #### bot.placeEntity(referenceBlock, faceVector)
 
 This function returns a `Promise`, with `Entity` as its argument upon completion.
@@ -2097,9 +2100,7 @@ Mount a vehicle. To get back out, use `bot.dismount`.
 
 #### bot.dismount()
 
-This function returns a `Promise`, with `void` as its argument once the dismount has been sent. On 1.21.3+ it resolves once the server has dismounted the bot, and rejects after 5 seconds if it does not.
-
-Dismounts from the vehicle you are in. On 1.21.3+ this holds the sneak control until the server dismounts the bot, which is how vanilla leaves a vehicle, then puts sneak back to what it was.
+Dismounts from the vehicle you are in.
 
 #### bot.moveVehicle(left,forward)
 
@@ -2245,7 +2246,7 @@ Put the item at `slot` in the inventory.
 
 This function returns a `Promise`, with `void` as its argument once the server has acknowledged the close.
 
-Close the `window`. On 1.16.5 and below the server only learns which inventory slots the window changed on its next tick, so await this before anything else (a command, another player) touches those slots.
+Close the `window`. On 1.16.5 and below the server only learns which inventory slots the window changed on its next tick, so await this before anything else (a command, another player) touches those slots. A `null` window (`bot.currentWindow` after the window closed on its own) is a no-op.
 
 #### bot.transfer(options)
 

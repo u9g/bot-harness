@@ -33,6 +33,29 @@ export interface BotOptions extends ClientOptions {
   brand?: string
   defaultChatPatterns?: boolean
   respawn?: boolean
+  /** @default true */
+  dumpBadPackets?: boolean
+  badPacketsDir?: string
+}
+
+export interface BadPacketDump {
+  mcVersion: string
+  protocolVersion: number | null
+  mineflayerVersion: string
+  minecraftProtocolVersion: string | null
+  state: string
+  direction: 'toClient'
+  packetId: number | null
+  packetName: string | null
+  type: 'ReadError' | 'PartialReadError' | 'SizeMismatch'
+  error: { message: string, field: string | null, stack: string } | null
+  bytesRead: number | null
+  packetLength: number
+  packetParsingTrace: string[]
+  partialData: any
+  buffer: string
+  date: string
+  path: string
 }
 
 export type ChatLevel = 'enabled' | 'commandsOnly' | 'disabled'
@@ -62,6 +85,7 @@ export interface BotEvents {
   ) => Promise<void> | void
   actionBar: (jsonMsg: ChatMessage) => Promise<void> | void
   error: (err: Error) => Promise<void> | void
+  badPacket: (dump: BadPacketDump) => Promise<void> | void
   message: (jsonMsg: ChatMessage, position: string) => Promise<void> | void
   messagestr: (message: string, position: string, jsonMsg: ChatMessage) => Promise<void> | void
   unmatchedMessage: (stringMsg: string, jsonMsg: ChatMessage) => Promise<void> | void
@@ -328,10 +352,6 @@ export interface Bot extends TypedEmitter<BotEvents> {
 
   placeBlock: (referenceBlock: Block, faceVector: Vec3) => Promise<void>
 
-  /** Reject a placement whose requested face is not the one the bot's own crosshair reaches,
-   *  instead of sending it anyway. Off by default. */
-  placeFaceStrict: boolean
-
   placeEntity: (referenceBlock: Block, faceVector: Vec3) => Promise<Entity>
 
   activateBlock: (block: Block, direction?: Vec3, cursorPos?: Vec3) => Promise<void>
@@ -414,7 +434,7 @@ export interface Bot extends TypedEmitter<BotEvents> {
 
   putAway: (slot: number) => Promise<void>
 
-  closeWindow: (window: Window) => Promise<void>
+  closeWindow: (window: Window | null) => Promise<void>
 
   transfer: (options: TransferOptions) => Promise<void>
 
@@ -812,7 +832,7 @@ export class ScoreBoard {
 
   setTitle (title: string | object): void;
 
-  add(name: string, value: number, display?: string | object): ScoreBoardItem;
+  add(name: string, value: number): ScoreBoardItem;
 
   remove (name: string): ScoreBoardItem;
 }

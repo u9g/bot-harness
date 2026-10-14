@@ -1,4 +1,5 @@
 const { Vec3 } = require('vec3')
+const { RaycastIterator } = require('prismarine-world').iterators
 const conv = require('../conversions')
 const mojangson = require('mojangson')
 const { onceWithCleanup } = require('../promise_utils')
@@ -111,9 +112,6 @@ function inject (bot) {
     bot.entity.height = PLAYER_HEIGHT
     bot.entity.width = PLAYER_WIDTH
     bot.entity.eyeHeight = PLAYER_EYEHEIGHT
-    // A player that has just been added to the world is airborne until a tick of physics
-    // says otherwise (Entity.onGround starts false); prismarine-entity defaults it to true.
-    bot.entity.onGround = false
   })
 
   bot._client.on('entity_equipment', (packet) => {
@@ -338,7 +336,7 @@ function inject (bot) {
     bot.emit('entityMoved', entity)
   })
 
-  bot._client.on('entity_teleport', (packet) => {
+  function handleEntityTeleportLegacy (packet) {
     // entity teleport
     const entity = fetchEntity(packet.entityId)
     if (bot.supportFeature('fixedPointPosition')) {
@@ -350,7 +348,48 @@ function inject (bot) {
     entity.yaw = conv.fromNotchianYawByte(packet.yaw)
     entity.pitch = conv.fromNotchianPitchByte(packet.pitch)
     bot.emit('entityMoved', entity)
-  })
+  }
+
+  // 1.21.2+: same layout as the player position packet, each part absolute or relative per flag
+  function handleEntityTeleportRelative (packet) {
+    const entity = fetchEntity(packet.entityId)
+    const { position: pos, velocity: vel } = entity
+    const oldYaw = conv.toNotchianYaw(entity.yaw)
+    const oldPitch = conv.toNotchianPitch(entity.pitch)
+    const newYaw = (packet.flags.yaw ? oldYaw : 0) + packet.yaw
+    const newPitch = (packet.flags.pitch ? oldPitch : 0) + packet.pitch
+    pos.set(
+      packet.flags.x ? pos.x + packet.x : packet.x,
+      packet.flags.y ? pos.y + packet.y : packet.y,
+      packet.flags.z ? pos.z + packet.z : packet.z
+    )
+    // A dx/dy/dz flag adds the current velocity to the packet's; yawDelta first turns the
+    // current velocity by the rotation change.
+    const v = packet.flags.yawDelta
+      ? rotateVelocity(vel, (oldPitch - newPitch) * Math.PI / 180, (oldYaw - newYaw) * Math.PI / 180)
+      : vel.clone()
+    vel.set(
+      (packet.flags.dx ? v.x : 0) + packet.dx,
+      (packet.flags.dy ? v.y : 0) + packet.dy,
+      (packet.flags.dz ? v.z : 0) + packet.dz
+    )
+    entity.yaw = conv.fromNotchianYaw(newYaw)
+    entity.pitch = conv.fromNotchianPitch(newPitch)
+    bot.emit('entityMoved', entity)
+  }
+
+  // Vanilla Vec3.xRot then Vec3.yRot, angles in radians.
+  function rotateVelocity (v, pitchDelta, yawDelta) {
+    const cp = Math.cos(pitchDelta)
+    const sp = Math.sin(pitchDelta)
+    const y = v.y * cp + v.z * sp
+    const z = v.z * cp - v.y * sp
+    const cy = Math.cos(yawDelta)
+    const sy = Math.sin(yawDelta)
+    return new Vec3(v.x * cy + z * sy, y, z * cy - v.x * sy)
+  }
+
+  bot._client.on('entity_teleport', bot.supportFeature('entityTeleportHasRelativeFlags') ? handleEntityTeleportRelative : handleEntityTeleportLegacy)
 
   // 1.21.3 - merges the packets above
   bot._client.on('sync_entity_position', (packet) => {
@@ -836,6 +875,10 @@ function inject (bot) {
 
   bot.swingArm = swingArm
   bot.attack = attack
+  bot.activateEntity = activateEntity
+  bot.activateEntityAt = activateEntityAt
+  bot.useOn = useOn
+  bot.mount = mount
   bot.dismount = dismount
   bot.moveVehicle = moveVehicle
 
@@ -846,10 +889,14 @@ function inject (bot) {
     bot._client.write('arm_animation', packet)
   }
 
-  // An attack carries no hit location, only the sneak state; 26.1 moved it to its own packet.
-  const attackEntity = bot.supportFeature('attackUsesOwnPacket')
-    ? (target) => bot._client.write('attack', { entityId: target.id })
-    : (target) => bot._client.write('use_entity', { target: target.id, mouse: 1, sneaking: bot.getControlState('sneak') })
+  function attackEntity (target) {
+    if (bot.supportFeature('attackUsesOwnPacket')) {
+      bot._client.write('attack', { entityId: target.id })
+    } else {
+      // An attack carries no hit location, only the sneak state
+      bot._client.write('use_entity', { target: target.id, mouse: 1, sneaking: bot.getControlState('sneak') })
+    }
+  }
 
   function attack (target, swing = true) {
     // arm animation comes before the use_entity packet on 1.8
@@ -866,26 +913,77 @@ function inject (bot) {
     }
   }
 
-  function moveVehicle (left, forward) {
-    if (bot.supportFeature('newPlayerInputPacket')) {
-      // docs:
-      // * left can take -1 or 1 : -1 means right, 1 means left
-      // * forward can take -1 or 1 : -1 means backward, 1 means forward
-      bot._client.write('player_input', {
-        inputs: {
-          forward: forward > 0,
-          backward: forward < 0,
-          left: left > 0,
-          right: left < 0
-        }
+  // Where the line from the eye to the entity's middle enters its hitbox, relative to the entity:
+  // the hit vanilla reports for a player looking at the entity's middle.
+  function hitVector (entity) {
+    // prismarine-entity leaves a type minecraft-data has no size for at zero size: use its position
+    if (!entity.width || !entity.height) return new Vec3(0, 0, 0)
+    const eye = bot.entity.position.offset(0, bot.entity.eyeHeight, 0)
+    const middle = entity.position.offset(0, entity.height / 2, 0)
+    const dir = middle.minus(eye).normalize()
+    const w = entity.width / 2
+    const iterator = new RaycastIterator(eye, dir, eye.distanceTo(middle))
+    const intersect = iterator.intersect([[-w, 0, -w, w, entity.height, w]], entity.position)
+    // The ray enters the box behind the eye when the eye is inside it
+    if (!intersect || intersect.pos.minus(eye).dot(dir) < 0) return middle.minus(entity.position)
+    return intersect.pos.minus(entity.position)
+  }
+
+  function interactEntity (entity, hit) {
+    // The server applies the packet's sneak flag as the player's shift state
+    const sneaking = bot.getControlState('sneak')
+    if (bot.supportFeature('useEntityHasLocation')) {
+      // 26.1+: interact carries the hit point, interact_at is gone
+      bot._client.write('use_entity', {
+        target: entity.id,
+        hand: 0, // main hand
+        location: hit,
+        sneaking
       })
     } else {
-      bot._client.write('steer_vehicle', {
-        sideways: left,
-        forward,
-        jump: 0x01
+      bot._client.write('use_entity', {
+        target: entity.id,
+        mouse: 2, // interact at
+        x: hit.x,
+        y: hit.y,
+        z: hit.z,
+        hand: 0, // main hand
+        sneaking
+      })
+      bot._client.write('use_entity', {
+        target: entity.id,
+        mouse: 0, // interact
+        hand: 0, // main hand
+        sneaking
       })
     }
+  }
+
+  async function activateEntity (entity) {
+    const hit = hitVector(entity)
+    await bot.lookAt(entity.position.plus(hit), false)
+    interactEntity(entity, hit)
+  }
+
+  async function activateEntityAt (entity, position) {
+    await bot.lookAt(position, false)
+    interactEntity(entity, position.minus(entity.position))
+  }
+
+  function useOn (entity) {
+    interactEntity(entity, hitVector(entity))
+  }
+
+  function mount (entity) {
+    interactEntity(entity, hitVector(entity))
+  }
+
+  function moveVehicle (left, forward) {
+    // The riding tick sends the held controls, as the vanilla client sends its movement keys
+    bot.setControlState('left', left > 0)
+    bot.setControlState('right', left < 0)
+    bot.setControlState('forward', forward > 0)
+    bot.setControlState('back', forward < 0)
   }
 
   async function dismount () {
@@ -893,24 +991,15 @@ function inject (bot) {
       bot.emit('error', new Error('dismount: not mounted'))
       return
     }
-    if (bot.supportFeature('newPlayerInputPacket')) {
-      // Only the shift key in player_input dismounts (Player.rideTick); the jump
-      // flag is never read for this. physicsTick does not run while mounted, so
-      // hold sneak until the server reports the dismount rather than for a tick
-      const wasSneaking = bot.getControlState('sneak')
-      const dismounted = onceWithCleanup(bot, 'dismount', { timeout: 5000 })
-      bot.setControlState('sneak', true)
-      try {
-        await dismounted
-      } finally {
-        bot.setControlState('sneak', wasSneaking)
-      }
-    } else {
-      bot._client.write('steer_vehicle', {
-        sideways: 0.0,
-        forward: 0.0,
-        jump: 0x02 // unmount flag
-      })
+    // Vanilla leaves a vehicle by holding sneak: the riding tick sends it and the server's
+    // Player.rideTick stops riding. Held until the server reports the dismount
+    const wasSneaking = bot.getControlState('sneak')
+    const dismounted = onceWithCleanup(bot, 'dismount', { timeout: 5000 })
+    bot.setControlState('sneak', true)
+    try {
+      await dismounted
+    } finally {
+      bot.setControlState('sneak', wasSneaking)
     }
   }
 

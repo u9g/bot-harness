@@ -46,7 +46,7 @@ function inject (bot) {
         resolve()
       }, timeoutMs)
       pendingStatsRequests.push(request)
-      bot._client.write('client_command', bot.supportFeature('respawnIsPayload') ? { payload: 1 } : { actionId: 1 })
+      bot._client.write('client_command', bot.supportFeature('respawnIsPayload') ? { payload: 1 } : { actionId: 'request_stats' })
     })
   }
 
@@ -73,7 +73,9 @@ function inject (bot) {
       // the same ordered connection is proof the rejection window has passed.
       return new Promise((resolve, reject) => {
         function updateSlot (oldItem, newItem) {
-          if (newItem.itemId !== item.itemId) {
+          // Either side is null for an empty slot: clearing a slot, or a sync
+          // the server sent before processing our packet
+          if (newItem?.itemId !== item?.itemId) {
             creativeSlotsUpdates[slot] = false
             reject(Error('Server rejected'))
           }
