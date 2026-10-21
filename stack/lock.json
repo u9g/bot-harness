@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "201ca802a1b2c968b02e7fa5b31dd74e8bff3d8b",
-      "tip": "f868d13b4d8f6a5a931d31a69fead029b8e8d4b7",
-      "tree": "1cb4e647ee915d4b9c2253f5a8c9ed7dbc053053",
+      "baseSha": "1df9432c07c81b47326e4fb1e06d3c8d723bf4aa",
+      "tip": "78ed08aad470eea86c69f8ab7ab5e8c04bc44920",
+      "tree": "4a8117a4283d275ec94ecdabdff75b219f162fd7",
       "prs": [
         {
           "number": 1292,
@@ -52,7 +52,7 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "7d3956d5a27b0d25048f870a2c9b436d6326ef29",
-      "tip": "e8bfc1d76a5a141bceba8f7561324bd5fe6f8908",
+      "tip": "81b089c05b2f07ed30eea4c9a715ee70599c59fb",
       "tree": "fdce576b81356a7cd7165e80a5bffe5ac58ceec9",
       "prs": [
         {
@@ -82,9 +82,9 @@
     "minecraft-protocol": {
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
-      "baseSha": "1c83189272348b9e12076465a748a5ecdd14acce",
-      "tip": "f01d9ce2b10e252bc5f58dc932c6c3b9197f54e0",
-      "tree": "778f7914da7c306e9814871e2953f73921642984",
+      "baseSha": "dacf62ef40cc559429537a303ac246ee9cede175",
+      "tip": "8e304e2476af3ef693debfd86e5ff81c0007a0e4",
+      "tree": "0d902967e03309df9c7fddc824b2d3ee2d5bd1e8",
       "prs": [
         {
           "number": 1522,
@@ -114,7 +114,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "2b148a386275a1518f2a30ba354700abd6d1ab19",
-      "tip": "ec5864c79bed3ad77e0163b76e4aa36e7a9344ea",
+      "tip": "dc944bfe797d7b3ace198f30d1452907afb81af8",
       "tree": "3087e8a6a4f9b23a9e9a73e92a098d69af788c9e",
       "prs": [
         {
@@ -146,8 +146,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-      "tip": "73067becdf1c2004f6ebe7623c42982e16fc1811",
-      "tree": "2acdf1a437d4fc4ec9455e8fc3ffa58ab3de8fc2",
+      "tip": "787543b4ce17d60c306d59fa2be3fc015d755bf1",
+      "tree": "60b213ce6794e18dc132b0daf52b2ef66074de34",
       "prs": [
         {
           "number": 4021,
@@ -383,6 +383,13 @@
           "head": "bc60f0b1812ee1db29c037099ce89d40f1293f12",
           "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
+        },
+        {
+          "number": 4191,
+          "title": "Fix the racy rotation-after-teleport internal test",
+          "head": "e4bfb2efd19cf18e58f65978c93f17eb3f8a314c",
+          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "status": "applied"
         }
       ]
     },
@@ -390,7 +397,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d773d15ff1bb271090122b3c7106a519a68bbbd9",
-      "tip": "c7076cb9dcd8206e0e8fcf58d5b95cf16b89aed4",
+      "tip": "f5fbdb98f30ec378a7e0868336b5526b249dbdc9",
       "tree": "4db3f117df97510078c9b7614d1f5f903a0c239b",
       "prs": [
         {
@@ -414,7 +421,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "8a3ce60b40f1ff7a26422a8f8904fbedbe808688",
-      "tip": "ec5393f53da8689de084c395ecf4a92f9522c27f",
+      "tip": "b25a0f91c48f2e2e93e334447aa4021b49f84331",
       "tree": "07cd176795616f2bd1eafb785c9abe8303694bf5",
       "prs": [
         {
