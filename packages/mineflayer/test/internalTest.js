@@ -452,83 +452,6 @@ for (const supportedVersion of mineflayer.testedVersions) {
       })
     })
 
-    describe('dismount', () => {
-      const vehicleId = 21
-
-      // Logs in, then spawns a pig and puts the bot on it through the packets a server sends
-      async function mountPig (client) {
-        await bot.test.pluginsLoaded
-        const loggedIn = once(bot, 'login')
-        client.write('login', bot.test.generateLoginPacket())
-        await loggedIn
-        bot.physicsEnabled = false
-        // The riding tick only sends inputs over a loaded chunk
-        const chunk = bot.test.buildChunk()
-        chunk.setBlockType(vec3(1, 65, 1), 41)
-        client.write('map_chunk', generateChunkPacket(chunk))
-        client.write(bot.registry.supportFeature('consolidatedEntitySpawnPacket') ? 'spawn_entity' : 'spawn_entity_living', {
-          entityId: vehicleId,
-          entityUUID: '00112233-4455-6677-8899-aabbccddeeff',
-          objectUUID: '00112233-4455-6677-8899-aabbccddeeff',
-          type: (bot.registry.entitiesByName.pig ?? bot.registry.entitiesByName.Pig).id, // capitalised before 1.11
-          x: 1,
-          y: 65,
-          z: 1,
-          yaw: 0,
-          pitch: 0,
-          headPitch: 0,
-          velocity: { x: 0, y: 0, z: 0 },
-          metadata: []
-        })
-        const mounted = once(bot, 'mount')
-        if (bot.supportFeature('setPassengerStackEntity')) {
-          client.write('set_passengers', { entityId: vehicleId, passengers: [bot.entity.id] })
-        } else {
-          client.write('attach_entity', { entityId: bot.entity.id, vehicleId, leash: false })
-        }
-        await mounted
-      }
-
-      it('holds sneak until the server dismounts', (done) => {
-        server.on('playerJoin', async (client) => {
-          try {
-            await mountPig(client)
-            const dismountOnShift = (shift) => {
-              if (!shift) return
-              if (bot.supportFeature('setPassengerStackEntity')) {
-                client.write('set_passengers', { entityId: vehicleId, passengers: [] })
-              } else {
-                client.write('attach_entity', { entityId: bot.entity.id, vehicleId: -1, leash: false })
-              }
-            }
-            client.on('player_input', ({ inputs }) => dismountOnShift(inputs.shift))
-            client.on('steer_vehicle', ({ jump }) => dismountOnShift(jump & 0x02))
-            await bot.dismount()
-            assert.strictEqual(bot.vehicle, null)
-            assert.strictEqual(bot.getControlState('sneak'), false)
-            done()
-          } catch (err) {
-            done(err)
-          }
-        })
-      })
-
-      it('leaves an already held sneak held when the server does not dismount', function (done) {
-        this.timeout(15 * 1000)
-        server.on('playerJoin', async (client) => {
-          try {
-            await mountPig(client)
-            bot.setControlState('sneak', true)
-            await assert.rejects(bot.dismount())
-            assert.strictEqual(bot.getControlState('sneak'), true)
-            done()
-          } catch (err) {
-            done(err)
-          }
-        })
-      })
-    })
-
     describe('physics', () => {
       const pos = vec3(1, 65, 1)
       const goldId = 41
@@ -820,6 +743,37 @@ for (const supportedVersion of mineflayer.testedVersions) {
           })
         })
       })
+      it('answers a teleport airborne and then reports the standing flag it had while physics is disabled', async function () {
+        const client = (await once(server, 'playerJoin'))[0]
+        await client.write('login', bot.test.generateLoginPacket())
+        const chunk = bot.test.buildChunk()
+        chunk.setBlockType(pos, goldId)
+        await client.write('map_chunk', generateChunkPacket(chunk))
+        await once(bot, 'chunkColumnLoad')
+        const onBlock = { x: pos.x + 0.5, y: pos.y + 1, z: pos.z + 0.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, teleportId: 1, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0 }
+        const landed = once(bot, 'forcedMove')
+        await client.write('position', onBlock)
+        await landed
+        await bot.waitForTicks(5)
+        assert.strictEqual(bot.entity.onGround, true, 'standing on the block')
+        bot.physicsEnabled = false
+        const moves = []
+        const onPacket = (data, meta) => {
+          if (!['position', 'position_look', 'look', 'flying'].includes(meta.name)) return
+          moves.push({ name: meta.name, onGround: data.onGround ?? data.flags?.onGround })
+        }
+        client.on('packet', onPacket)
+        const pinned = once(bot, 'forcedMove')
+        await client.write('position', { ...onBlock, teleportId: 2 })
+        await pinned
+        await sleep(1500)
+        client.off('packet', onPacket)
+        // The reply to the teleport is the only packet that is not grounded.
+        const airborne = moves.filter(m => m.onGround !== true)
+        assert.deepStrictEqual(airborne, [{ name: 'position_look', onGround: false }], `the teleport reply alone is airborne: ${JSON.stringify(moves)}`)
+        const reminders = moves.slice(moves.indexOf(airborne[0]) + 1)
+        assert.ok(reminders.length > 0, 'the position reminder goes out with physics disabled')
+      })
       it('sends the 1.21.2+ input packets like vanilla', async function () {
         if (!bot.supportFeature('newPlayerInputPacket')) {
           this.skip()
@@ -830,6 +784,19 @@ for (const supportedVersion of mineflayer.testedVersions) {
         const joined = once(server, 'playerJoin')
         const client = (await joined)[0]
         client.on('packet', (params, { name }) => sent.push({ name, params }))
+        // Resolves when the server receives the tick_end closing the `ticks`th tick counted from the
+        // one the matching packet was sent in, so `sent` then holds everything those ticks sent.
+        const ticksAfter = (packetName, matches, ticks = 1) => {
+          let ended = -1
+          return onceWithCleanup(client, 'packet', {
+            timeout: 5000,
+            checkCondition: (params, { name }) => {
+              if (ended < 0 && name === packetName && (!matches || matches(params))) ended = 0
+              if (ended >= 0 && name === 'tick_end') ended++
+              return ended === ticks
+            }
+          }).catch(() => assert.fail(`the server did not receive ${packetName}`))
+        }
         await client.write('login', bot.test.generateLoginPacket())
         await client.write('update_health', { health: 20, food: 20, foodSaturation: 5 })
         const chunk = bot.test.buildChunk()
@@ -839,13 +806,14 @@ for (const supportedVersion of mineflayer.testedVersions) {
         const p1 = once(bot, 'forcedMove')
         await client.write('position', { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: {}, teleportId: 0 })
         await p1
-        await bot.waitForTicks(3)
+        await ticksAfter('tick_end', undefined, 3)
         assert.ok(sent.some(p => p.name === 'tick_end'), 'tick_end is sent every tick')
         assert.ok(!sent.some(p => p.name === 'player_input' && p.params.inputs.shift), 'no shift before sneaking')
 
         sent.length = 0
+        const shiftTick = ticksAfter('player_input', ({ inputs }) => inputs.shift)
         bot.setControlState('sneak', true)
-        await bot.waitForTicks(2)
+        await shiftTick
         const shift = sent.find(p => p.name === 'player_input')
         assert.ok(shift, 'player_input on sneak')
         const { _value, ...inputs } = shift.params.inputs // the parsed bitflags carry their raw value
@@ -860,28 +828,25 @@ for (const supportedVersion of mineflayer.testedVersions) {
 
         // Sneaking blocks sprinting; the key set still changes.
         sent.length = 0
+        const sprintKeyTicks = ticksAfter('player_input', ({ inputs }) => inputs.sprint && inputs.forward, 2)
         bot.setControlState('sprint', true)
         bot.setControlState('forward', true)
-        await bot.waitForTicks(2)
+        await sprintKeyTicks
         assert.ok(sent.some(p => p.name === 'player_input' && p.params.inputs.sprint && p.params.inputs.forward), 'player_input with sprint + forward')
         assert.ok(!sent.some(p => p.name === 'entity_action' && p.params.actionId === 'start_sprinting'), 'no start_sprinting while sneaking')
 
-        sent.length = 0
+        const startSprinting = ticksAfter('entity_action', ({ actionId }) => actionId === 'start_sprinting')
         bot.setControlState('sneak', false)
-        await bot.waitForTicks(3)
-        assert.ok(sent.some(p => p.name === 'entity_action' && p.params.actionId === 'start_sprinting'), 'start_sprinting once the sneak key is released')
+        await startSprinting // once the sneak key is released
 
-        sent.length = 0
+        const stopSprinting = ticksAfter('entity_action', ({ actionId }) => actionId === 'stop_sprinting')
         bot.setControlState('forward', false)
-        await bot.waitForTicks(3)
-        assert.ok(sent.some(p => p.name === 'entity_action' && p.params.actionId === 'stop_sprinting'), 'stop_sprinting without a forward impulse')
+        await stopSprinting // without a forward impulse
         bot.clearControlStates()
       })
 
       it('sends the held controls again to the player a login creates', async function () {
-        const sent = []
         const client = (await once(server, 'playerJoin'))[0]
-        client.on('packet', (params, { name }) => sent.push({ name, params }))
         const chunk = bot.test.buildChunk()
         chunk.setBlockType(pos, goldId)
         const join = async (teleportId) => {
@@ -891,17 +856,19 @@ for (const supportedVersion of mineflayer.testedVersions) {
           await client.write('position', { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0, teleportId })
           await moved
         }
-        const sneakSent = () => sent.some(p => (p.name === 'entity_action' && p.params.actionId === 'start_sneaking') ||
-          (p.name === 'player_input' && p.params.inputs.shift))
+        const sneakReceived = (message) => onceWithCleanup(client, 'packet', {
+          timeout: 5000,
+          checkCondition: (params, { name }) => (name === 'entity_action' && params.actionId === 'start_sneaking') ||
+            (name === 'player_input' && params.inputs.shift)
+        }).catch(() => assert.fail(message))
         await join(0)
+        const sneak = sneakReceived('sneak is sent')
         bot.setControlState('sneak', true)
-        await bot.waitForTicks(2)
-        assert.ok(sneakSent(), 'sneak is sent')
+        await sneak
 
-        sent.length = 0
+        const resent = sneakReceived('the still-held sneak is sent to the new player')
         await join(1)
-        await bot.waitForTicks(2)
-        assert.ok(sneakSent(), 'the still-held sneak is sent to the new player')
+        await resent
         bot.clearControlStates()
       })
 
@@ -959,9 +926,7 @@ for (const supportedVersion of mineflayer.testedVersions) {
       })
 
       it('stops sprinting when the controls clear with physics disabled', async function () {
-        const sent = []
         const client = (await once(server, 'playerJoin'))[0]
-        client.on('packet', (params, { name }) => sent.push({ name, params }))
         await client.write('login', bot.test.generateLoginPacket())
         await client.write('update_health', { health: 20, food: 20, foodSaturation: 5 })
         const chunk = bot.test.buildChunk()
@@ -971,21 +936,23 @@ for (const supportedVersion of mineflayer.testedVersions) {
         const moved = once(bot, 'forcedMove')
         await client.write('position', { x: 1.5, y: 66, z: 1.5, dx: 0, dy: 0, dz: 0, pitch: 0, yaw: 0, flags: bot.supportFeature('positionPacketHasBitflags') ? {} : 0, teleportId: 0 })
         await moved
-        await bot.waitForTicks(3)
-        const sprintAction = (start) => sent.some(p => p.name === 'entity_action' &&
-          (p.params.actionId === (start ? 3 : 4) || p.params.actionId === (start ? 'start_sprinting' : 'stop_sprinting')))
+        const sprintAction = (start) => onceWithCleanup(client, 'entity_action', {
+          timeout: 5000,
+          checkCondition: ({ actionId }) => actionId === (start ? 3 : 4) || actionId === (start ? 'start_sprinting' : 'stop_sprinting')
+        }).catch(() => assert.fail(start ? 'start_sprinting' : 'stop_sprinting'))
+        const started = sprintAction(true)
         bot.setControlState('sprint', true)
         bot.setControlState('forward', true)
-        await bot.waitForTicks(2)
-        assert.ok(sprintAction(true), 'start_sprinting')
+        await started
 
-        sent.length = 0
+        const stopped = sprintAction(false)
         bot.physicsEnabled = false
         bot.clearControlStates()
-        // physicsTick is not emitted with physics disabled.
-        await sleep(200)
-        bot.physicsEnabled = true
-        assert.ok(sprintAction(false), 'stop_sprinting')
+        try {
+          await stopped
+        } finally {
+          bot.physicsEnabled = true
+        }
       })
 
       it('no movement packets during a server transfer configuration phase', function (done) {
@@ -2964,6 +2931,121 @@ for (const supportedVersion of mineflayer.testedVersions) {
         bot._client.emit('scoreboard_objective', { name: 'test1', action: 1 })
         assert.deepStrictEqual(Object.keys(bot.scoreboard), [])
         assert.strictEqual(bot.scoreboard.sidebar, undefined)
+      })
+
+      // 1.20.3 dropped the action field from the score packet and moved removal to reset_score.
+      const objectiveFields = registry.protocol?.play?.toClient?.types?.packet_scoreboard_objective?.[1] ?? []
+      const scoreHasAction = (registry.protocol?.play?.toClient?.types?.packet_scoreboard_score?.[1] ?? [])
+        .some(field => field.name === 'action')
+      // 1.8 to 1.12 name the objective's render type; later versions send its index.
+      const objectiveType = objectiveFields.find(f => f.name === 'type')?.type?.[1]?.fields?.[0] === 'string' ? 'integer' : 0
+
+      const addObjective = (client, name, title) => client.write('scoreboard_objective', {
+        name, action: 0, displayText: chatText(title), type: objectiveType
+      })
+      const setScore = (client, objective, entity, value, display) => client.write('scoreboard_score', scoreHasAction
+        ? { itemName: entity, action: 0, scoreName: objective, value }
+        : { itemName: entity, scoreName: objective, value, display_name: display })
+
+      // Every packet the server sends on join lands in one batch, so the events they raise are all
+      // emitted before the first await returns; each test collects them instead of awaiting in turn.
+      function collect (...events) {
+        const seen = []
+        for (const name of events) bot.on(name, (...args) => seen.push([name, ...args]))
+        return seen
+      }
+      // Resolves once the bot has joined and the packets written for it have been handled.
+      function onJoin (write) {
+        return new Promise(resolve => {
+          server.on('playerJoin', (client) => {
+            write(client)
+            sleep(100).then(resolve)
+          })
+        })
+      }
+
+      it('reads the objective title, whatever shape the version sends it in', async () => {
+        const seen = collect('scoreboardCreated', 'scoreboardPosition')
+        await onJoin((client) => {
+          addObjective(client, 'kills', 'Total Kills')
+          client.write('scoreboard_display_objective', { position: 1, name: 'kills' })
+        })
+        const created = seen.find(e => e[0] === 'scoreboardCreated')
+        assert.ok(created, 'no scoreboardCreated')
+        assert.strictEqual(created[1].title.toString(), 'Total Kills')
+        assert.ok(seen.some(e => e[0] === 'scoreboardPosition'), 'no scoreboardPosition')
+        assert.strictEqual(bot.scoreboard.sidebar, bot.scoreboards.kills)
+      })
+
+      it('records a score and drops it again', async () => {
+        const seen = collect('scoreUpdated', 'scoreRemoved')
+        let client
+        await onJoin((c) => {
+          client = c
+          addObjective(c, 'kills', 'Total Kills')
+          setScore(c, 'kills', 'wvffle', 7)
+        })
+        const updated = seen.find(e => e[0] === 'scoreUpdated')
+        assert.ok(updated, 'no scoreUpdated')
+        const [, scoreboard, added] = updated
+        assert.strictEqual(added.value, 7)
+        assert.strictEqual(scoreboard.itemsMap.wvffle, added)
+        assert.strictEqual(added.displayName.toString(), 'wvffle')
+
+        if (scoreHasAction) client.write('scoreboard_score', { itemName: 'wvffle', action: 1, scoreName: 'kills' })
+        else client.write('reset_score', { entity_name: 'wvffle', objective_name: 'kills' })
+        await sleep(100)
+        const removal = seen.find(e => e[0] === 'scoreRemoved')
+        assert.ok(removal, 'no scoreRemoved')
+        assert.strictEqual(removal[2].value, 7)
+        assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle, undefined)
+      })
+
+      if (!scoreHasAction) {
+        it('draws a score with the display name the server sends for it', async () => {
+          const seen = collect('scoreUpdated')
+          await onJoin((client) => {
+            addObjective(client, 'kills', 'Total Kills')
+            setScore(client, 'kills', 'wvffle', 3, chatText('Wvffle the Great'))
+          })
+          assert.ok(seen.length, 'no scoreUpdated')
+          assert.strictEqual(seen[0][2].displayName.toString(), 'Wvffle the Great')
+        })
+
+        it('drops a score from every objective when reset_score names none', async () => {
+          let client
+          await onJoin((c) => {
+            client = c
+            addObjective(c, 'kills', 'Total Kills')
+            addObjective(c, 'deaths', 'Total Deaths')
+            setScore(c, 'kills', 'wvffle', 7)
+            setScore(c, 'deaths', 'wvffle', 2)
+          })
+          assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle.value, 7)
+          assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle.value, 2)
+          client.write('reset_score', { entity_name: 'wvffle', objective_name: undefined })
+          await sleep(100)
+          assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle, undefined)
+          assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle, undefined)
+        })
+      }
+
+      it('leaves every objective alone when a removal names an unknown one', async () => {
+        const seen = collect('scoreRemoved')
+        let client
+        await onJoin((c) => {
+          client = c
+          addObjective(c, 'kills', 'Total Kills')
+          addObjective(c, 'deaths', 'Total Deaths')
+          setScore(c, 'kills', 'wvffle', 7)
+          setScore(c, 'deaths', 'wvffle', 2)
+        })
+        if (scoreHasAction) client.write('scoreboard_score', { itemName: 'wvffle', action: 1, scoreName: 'missing' })
+        else client.write('reset_score', { entity_name: 'wvffle', objective_name: 'missing' })
+        await sleep(100)
+        assert.strictEqual(seen.length, 0)
+        assert.strictEqual(bot.scoreboards.kills.itemsMap.wvffle.value, 7)
+        assert.strictEqual(bot.scoreboards.deaths.itemsMap.wvffle.value, 2)
       })
     })
 

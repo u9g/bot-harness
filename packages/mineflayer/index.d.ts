@@ -376,7 +376,7 @@ export interface Bot extends TypedEmitter<BotEvents> {
 
   mount: (entity: Entity) => void
 
-  dismount: () => Promise<void>
+  dismount: () => void
 
   moveVehicle: (left: number, forward: number) => void
 
@@ -832,7 +832,7 @@ export class ScoreBoard {
 
   setTitle (title: string | object): void;
 
-  add(name: string, value: number): ScoreBoardItem;
+  add(name: string, value: number, display?: string | object): ScoreBoardItem;
 
   remove (name: string): ScoreBoardItem;
 }

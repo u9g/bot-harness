@@ -2,7 +2,6 @@ const { Vec3 } = require('vec3')
 const { RaycastIterator } = require('prismarine-world').iterators
 const conv = require('../conversions')
 const mojangson = require('mojangson')
-const { onceWithCleanup } = require('../promise_utils')
 // These values are only accurate for versions 1.14 and above (crouch hitbox changes)
 // Todo: hitbox sizes for sleeping, swimming/crawling, and flying with elytra
 const PLAYER_HEIGHT = 1.8
@@ -112,6 +111,9 @@ function inject (bot) {
     bot.entity.height = PLAYER_HEIGHT
     bot.entity.width = PLAYER_WIDTH
     bot.entity.eyeHeight = PLAYER_EYEHEIGHT
+    // A player that has just been added to the world is airborne until a tick of physics
+    // says otherwise (Entity.onGround starts false); prismarine-entity defaults it to true.
+    bot.entity.onGround = false
   })
 
   bot._client.on('entity_equipment', (packet) => {
@@ -842,15 +844,6 @@ function inject (bot) {
         bot.vehicle = bot.entities[entityId]
         bot.emit('mount')
       }
-    } else if (bot.vehicle && bot.vehicle.id === entityId) {
-      // The server announces a dismount as the vehicle's new passenger list,
-      // which no longer includes the bot
-      const originalVehicle = bot.vehicle
-      const index = originalVehicle.passengers.indexOf(bot.entity)
-      if (index !== -1) originalVehicle.passengers.splice(index, 1)
-      bot.entity.vehicle = null
-      bot.vehicle = null
-      bot.emit('dismount', originalVehicle)
     }
   })
 
@@ -986,20 +979,23 @@ function inject (bot) {
     bot.setControlState('back', forward < 0)
   }
 
-  async function dismount () {
-    if (!bot.vehicle) {
+  function dismount () {
+    if (bot.vehicle) {
+      if (bot.supportFeature('newPlayerInputPacket')) {
+        bot._client.write('player_input', {
+          inputs: {
+            jump: true
+          }
+        })
+      } else {
+        bot._client.write('steer_vehicle', {
+          sideways: 0.0,
+          forward: 0.0,
+          jump: 0x02
+        })
+      }
+    } else {
       bot.emit('error', new Error('dismount: not mounted'))
-      return
-    }
-    // Vanilla leaves a vehicle by holding sneak: the riding tick sends it and the server's
-    // Player.rideTick stops riding. Held until the server reports the dismount
-    const wasSneaking = bot.getControlState('sneak')
-    const dismounted = onceWithCleanup(bot, 'dismount', { timeout: 5000 })
-    bot.setControlState('sneak', true)
-    try {
-      await dismounted
-    } finally {
-      bot.setControlState('sneak', wasSneaking)
     }
   }
 

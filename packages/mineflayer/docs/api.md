@@ -693,6 +693,9 @@ An object with all items in the scoreboard in it
 }
 ```
 
+Each item also has a `displayName` (a `ChatMessage`): the component the server sent with the score
+on 1.20.3+, otherwise the item's name formatted by its team.
+
 #### ScoreBoard.items
 
 An array with all sorted items in the scoreboard in it
@@ -930,7 +933,7 @@ What the server last allowed the player in the abilities packet.
 
 #### bot.physicsEnabled
 
-Enable physics, default true.
+Enable physics, default true. While it is false the position reminder still goes out every second and carries `bot.entity.onGround` as it was left: a teleport does not change it, and nothing simulates it.
 
 #### bot.player
 
