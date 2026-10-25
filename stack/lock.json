@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "1df9432c07c81b47326e4fb1e06d3c8d723bf4aa",
-      "tip": "78ed08aad470eea86c69f8ab7ab5e8c04bc44920",
-      "tree": "4a8117a4283d275ec94ecdabdff75b219f162fd7",
+      "baseSha": "5e063fa99cfe8ded065ec6788b66696b7e4ef143",
+      "tip": "16a7094601fe129cb9dfe37f69be894ea93b5e44",
+      "tree": "ca06d58ba95706332d19ccb3c8ba233be0268815",
       "prs": [
         {
           "number": 1292,
@@ -28,13 +28,13 @@
       "repo": "ProtoDef-io/ProtoDef",
       "base": "master",
       "baseSha": "8e07785e94626882fa3333184bb366e3f6625356",
-      "tip": "8a53c2fe007b0e475297ddbe664c7ace464e8fe0",
-      "tree": "b76e64ce2cde89b66f654ee6be0d6a7d96045cfb",
+      "tip": "76b1eac58d4b0dad4646f4485976d9d4a13984ba",
+      "tree": "47db2939e6747c67109bc7e66a869d2c005b1c2c",
       "prs": [
         {
           "number": 65,
           "title": "Add the hash datatype",
-          "head": "a2b1cd2d84488012b7949fbe578d3781cc3329a4",
+          "head": "349d52ee67a48c174968bb73ae59c50eebfada10",
           "mergeBase": "8e07785e94626882fa3333184bb366e3f6625356",
           "status": "applied"
         }
@@ -52,14 +52,14 @@
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "7d3956d5a27b0d25048f870a2c9b436d6326ef29",
-      "tip": "81b089c05b2f07ed30eea4c9a715ee70599c59fb",
-      "tree": "fdce576b81356a7cd7165e80a5bffe5ac58ceec9",
+      "tip": "dad60bd233348572611d387b0ab74f356611f7c3",
+      "tree": "e13103c95b00ddb42605e99999c5c8fe34f43f05",
       "prs": [
         {
           "number": 177,
           "title": "Add the hash datatype",
-          "head": "dde6ce755124e8f42b4fc1e53ce2d84c73acdb09",
-          "mergeBase": "173105d05cdb7102c9b69b5abe35718f3d4b5421",
+          "head": "d904e0b238ac650c153e0ba4f41017a0a9bf7fcc",
+          "mergeBase": "7d3956d5a27b0d25048f870a2c9b436d6326ef29",
           "status": "applied"
         },
         {
@@ -83,7 +83,7 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "dacf62ef40cc559429537a303ac246ee9cede175",
-      "tip": "8e304e2476af3ef693debfd86e5ff81c0007a0e4",
+      "tip": "8fad793b22c0c9179cb1df35a83a17535735787b",
       "tree": "0d902967e03309df9c7fddc824b2d3ee2d5bd1e8",
       "prs": [
         {
@@ -114,7 +114,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "2b148a386275a1518f2a30ba354700abd6d1ab19",
-      "tip": "dc944bfe797d7b3ace198f30d1452907afb81af8",
+      "tip": "cce5d96c415ac85e2e3f4484a42ee6c12ef9463c",
       "tree": "3087e8a6a4f9b23a9e9a73e92a098d69af788c9e",
       "prs": [
         {
@@ -145,9 +145,9 @@
     "mineflayer": {
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
-      "baseSha": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-      "tip": "787543b4ce17d60c306d59fa2be3fc015d755bf1",
-      "tree": "60b213ce6794e18dc132b0daf52b2ef66074de34",
+      "baseSha": "5a252e6d258882b042e60e21c37d552cdf3b3380",
+      "tip": "e3af2957de8ecd87b42679501a923dec44b66aaf",
+      "tree": "23a8b580e7e231647a2f9ceeb1e32c0d15bfa4c5",
       "prs": [
         {
           "number": 4021,
@@ -164,17 +164,10 @@
           "status": "applied"
         },
         {
-          "number": 4062,
-          "title": "entities: read the 1.21.2+ entity_teleport layout (velocity, float rotation, relative flags)",
-          "head": "57334280b186de71799380b6f21dcb33ae2bc13e",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "applied"
-        },
-        {
           "number": 4063,
           "title": "physics: send the movement input packets the vanilla client sends",
-          "head": "b02a5cbc3c6f79679318ab9bab95ddadfb8168c6",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "3f12916e1973b9baaf99e0301380b93469a08adc",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
         },
         {
@@ -231,9 +224,10 @@
         {
           "number": 4093,
           "title": "Dismount by holding sneak like vanilla",
-          "head": "57d21af3d6fe5180c8e43397256f6e9258a701c3",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "applied"
+          "head": "2cc79a3d0f64d584b6eb60f72a13f2378270973f",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
+          "status": "conflict",
+          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4094,
@@ -246,8 +240,8 @@
         {
           "number": 4103,
           "title": "Window state across close, re-login and respawn: stateId per window, close_window on respawn, closeWindow(null)",
-          "head": "0819fd6d30177b6e9dc5c044a09bd05c979bb523",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "2ccfe85959b58f82bc9f4bb59db3ff3cf827ae52",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
         },
         {
@@ -258,33 +252,10 @@
           "status": "applied"
         },
         {
-          "number": 4108,
-          "title": "physics: a teleport leaves the standing flag alone",
-          "head": "e55e2de24c80b730b405a17a6be566eca20ea899",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "conflict",
-          "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
           "number": 4111,
           "title": "Read the scoreboard objective title as a chat component",
-          "head": "f8dd937e190290d75837059ba80be69dd8f93a73",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "applied"
-        },
-        {
-          "number": 4112,
-          "title": "scoreboard: read the 1.20.3+ objective and score packets",
-          "head": "3334e47cb6d5a512a5183305c720faa3e2bc493b",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "conflict",
-          "note": "lib/scoreboard.js: model error: 429 Insufficient balance or no resource package. Please recharge."
-        },
-        {
-          "number": 4114,
-          "title": "placeEntity: test that the boat use_item serializes on every version",
-          "head": "6b46f1afea86a96e7760e8526ee60c65850c71f9",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "98008b7ade30b049e22ce977365b6380764a94b0",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
         },
         {
@@ -306,16 +277,16 @@
         {
           "number": 4126,
           "title": "test: move every internal test into its own file under test/internalTests",
-          "head": "ef8afec407fe37dedad5fa6ba713e867da02aa92",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "ee7b5bd73892d8ee982e816dff00f363f3c51e76",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "conflict",
           "note": "test/internalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4127,
           "title": "Apply the server's cursor item; kill drops after the test-world reset",
-          "head": "8c42f90959950683c97b6dc4cd73b99d3775bf50",
-          "mergeBase": "91204b2a034f0663b39814771e236bcb7c8f26c8",
+          "head": "af1062d15f7f69b2c78bb8695729b142a5b44241",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
         },
         {
@@ -343,8 +314,8 @@
         {
           "number": 4177,
           "title": "Emit inject_allowed on the next tick, before any packet can arrive",
-          "head": "f186a2122e2a33a7613f82cba57d19ae484c1ee6",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "566d1d7f9b2ceaa907736f77a1fcc75a1c70ce6e",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
         },
         {
@@ -352,21 +323,14 @@
           "title": "ci: halve CI wall time",
           "head": "baed46cd7c7f90ed46c36384fba7dbf48a4124dd",
           "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "applied"
-        },
-        {
-          "number": 4180,
-          "title": "ci: compare test durations against the slowest of master's last 10 runs",
-          "head": "17cac5d7b4fb0053188e225ce24167dc88239cfc",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "conflict",
           "note": ".github/workflows/ci.yml: model error: 429 Insufficient balance or no resource package. Please recharge."
         },
         {
           "number": 4181,
           "title": "Don't crash setInventorySlot on an empty slot update",
-          "head": "f8f16b282532b7c2b06f11f0ae5fdf7d2974bf54",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "6f4546f85cfc48cc9c1b147f312d612ebd21ba62",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
         },
         {
@@ -387,9 +351,24 @@
         {
           "number": 4191,
           "title": "Fix the racy rotation-after-teleport internal test",
-          "head": "e4bfb2efd19cf18e58f65978c93f17eb3f8a314c",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
+          "head": "bc6822f5c7acb41eb975c6be807a506eaa390608",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
           "status": "applied"
+        },
+        {
+          "number": 4199,
+          "title": "Fix exampleDigger flake: build before falling, and op wait on retries",
+          "head": "3503be57a98052770fce819076adc3f75476ea0a",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
+          "status": "applied"
+        },
+        {
+          "number": 4200,
+          "title": "test: reconnect when the server never reads the bot's socket",
+          "head": "8758aff5b143136a93b033308ebe5f6e0d8b61b9",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
+          "status": "conflict",
+          "note": "test/externalTest.js: model error: 429 Insufficient balance or no resource package. Please recharge."
         }
       ]
     },
@@ -397,7 +376,7 @@
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
       "baseSha": "d773d15ff1bb271090122b3c7106a519a68bbbd9",
-      "tip": "f5fbdb98f30ec378a7e0868336b5526b249dbdc9",
+      "tip": "98a2678e66c38803a2b623efe0b17665ed5edf7f",
       "tree": "4db3f117df97510078c9b7614d1f5f903a0c239b",
       "prs": [
         {
@@ -421,7 +400,7 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "8a3ce60b40f1ff7a26422a8f8904fbedbe808688",
-      "tip": "b25a0f91c48f2e2e93e334447aa4021b49f84331",
+      "tip": "3ca9ad80ddfa90650d35aa0682ddc7c746600555",
       "tree": "07cd176795616f2bd1eafb785c9abe8303694bf5",
       "prs": [
         {
