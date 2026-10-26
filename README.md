@@ -8,14 +8,18 @@ Runs directly on Node 24 (type stripping), no build step. Defaults to Minecraft 
 pnpm install
 ./mcbot.ts start t1 --host localhost --port 25565 -u Tester   # stays attached until the bot exits; ctrl-c stops it
 ./mcbot.ts start t1 -d ...                                            # or detach; then use `logs t1 -f` to watch
+./mcbot.ts start t1 -v 1.21.4 --auth microsoft -u me@example.com      # version and account; any other --key=value goes to createBot
 ./mcbot.ts exec t1 'bot.entity.position'                              # expression -> printed with util.inspect
 ./mcbot.ts exec t1 'bot.chat("hi"); await bot.waitForTicks(20); return bot.health'   # async fn body
 ./mcbot.ts exec t1 -f script.js                                       # or `-` for stdin
-./mcbot.ts exec t1 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded
+./mcbot.ts exec t1 -t 120000 'await bot.pathfinder.goto(new goals.GoalNear(10, 64, -5, 1))'   # mineflayer-pathfinder is loaded; -t raises the 30 s timeout
 ./mcbot.ts exec t1 'await human.walkTo(new Vec3(10, 64, -5))'         # ...or walk it the way a player would
 ./mcbot.ts record t1 start                                            # first-person mp4 of what the bot sees
 ./mcbot.ts record t1 snapshot -o now.png                              # PNG of the latest frame
 ./mcbot.ts record t1 stop                                             # prints the mp4 path
+./mcbot.ts status t1                                                  # daemon, then whether the bot is still connected
+./mcbot.ts logs t1 -f                                                 # last 50 log lines; -f follows
+./mcbot.ts list                                                       # every bot in ~/.mcbot with its server
 ./mcbot.ts stop t1
 ```
 
@@ -23,9 +27,11 @@ Exec'd code has these names in scope: `bot`, `human` (mineflayer-pathfinder's `c
 
 Each exec is compiled as its own async function body: declaring one of the names above (`const log = ...`) shadows it for that exec, and declarations do not carry over to later execs, so anything a later exec needs goes on `state` (`state.dig = function () { ... }`).
 
-`start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output.
+`start` runs in the foreground so you can keep it open in a spare terminal; its output also goes to the log file. With `-d` it detaches and only the log file gets output. `--host` defaults to `localhost`, `--port` to 25565, `-u` (or `--username`) to the bot ID, `-v` (or `--version`) to 26.1 and `--auth` to `offline` (`microsoft` for an online-mode server). It refuses to start an ID whose daemon is still alive.
 
-`status` reports the daemon and then the bot, because the two come apart: a kicked bot keeps its daemon, its `bot.entity` and its `physicsEnabled` flag and only stops sending packets, so a control loop can drive it for minutes without noticing. It prints `connected` with the login time, position and health, or `DISCONNECTED` with the last kick, end and error the daemon saw, and exits non-zero unless the bot is connected.
+The daemon is placed in a systemd user scope of its own (`mcbot-ID.scope`) so its limits bind the bot and nothing else: 4G memory hard, 3G soft, 1G swap, 400% CPU and 512 tasks by default, set with `MCBOT_MEMORY_MAX`, `MCBOT_MEMORY_HIGH`, `MCBOT_SWAP_MAX`, `MCBOT_CPU_MAX` and `MCBOT_TASKS_MAX` (`max` leaves one unset). Without a user systemd it runs uncapped and says so in the log.
+
+`status` reports the daemon and then the bot, because the two come apart: a kicked bot keeps its daemon, its `bot.entity` and its `physicsEnabled` flag and only stops sending packets, so a control loop can drive it for minutes without noticing. It prints `connected` with the login time, position and health, or `DISCONNECTED` with the last kick, end and error the daemon saw, plus the file, dropped frames and queued bytes of a running recording, and exits non-zero unless the bot is connected. `stop` sends the daemon SIGTERM, which ends the bot and removes its socket and pid file; on a daemon that is already gone it clears the stale files instead. `logs` prints the last 50 lines of the log file, `-f` (or `--follow`) keeps following it. `list` marks a bot whose pid file outlived its process as `stale`.
 
 ## Recording
 
@@ -37,13 +43,13 @@ Needs `ffmpeg` on PATH and, on Linux, an X display for headless-gl. `DISPLAY` is
 
 For a local test server: grab the 26.1 server jar from Mojang's version manifest, set `online-mode=false` and `eula=true`, and run it with Java 25 or newer.
 
-Every command except `list` takes the bot's ID first: `start` requires one (1-29 characters, letters, digits, `_`, `-`) and the other commands use it to pick which bot they talk to, so there is no default that two shells could both mean. The in-game username defaults to the ID. `mcbot list` shows every bot in the directory with its server. Extra `--key=value` flags on `start` are passed straight into `createBot` options. Files (pid, socket, log, json info) live in `~/.mcbot`, override with `MCBOT_DIR`.
+Every command except `list` takes the bot's ID first: `start` requires one (1-29 characters, letters, digits, `_`, `-`) and the other commands use it to pick which bot they talk to, so there is no default that two shells could both mean. The in-game username defaults to the ID. Extra `--key=value` flags on `start` are passed straight into `createBot` options. Files (pid, socket, log, json info) live in `~/.mcbot`, override with `MCBOT_DIR`.
 
 Once the bot's connection is gone it keeps answering `exec` with whatever state it still holds, so `state` and the packet history stay readable; every reply then carries the reason on stderr (`t1 is disconnected (kicked: ...)`). `reconnect()` clears it.
 
-`-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon.
+`-t MS` sets the per-exec timeout (default 30s). A timeout only stops waiting; the code keeps running in the daemon. `exec` exits 0 and prints the value unless it is `undefined`, or exits 1 with the error's stack. The `record` subcommands are sugar over `exec` calling the `record` scope object, so they share its timeout and stderr note.
 
-Layout: `mcbot.ts` is the CLI, `daemon.ts` is the detached process (bot + unix socket eval server), `protocol.ts` is the newline-delimited JSON wire format between them.
+Layout: `mcbot.ts` is the CLI, `daemon.ts` is the detached process (bot + unix socket eval server), `protocol.ts` is the newline-delimited JSON wire format between them, `record.ts` the renderer and ffmpeg pipe, `cgroup.ts` the systemd scope. `pnpm typecheck` runs tsc over all of it.
 
 ## The stack
 
