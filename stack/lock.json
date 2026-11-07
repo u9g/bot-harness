@@ -3,9 +3,9 @@
     "minecraft-data-data": {
       "repo": "PrismarineJS/minecraft-data",
       "base": "master",
-      "baseSha": "5e063fa99cfe8ded065ec6788b66696b7e4ef143",
-      "tip": "16a7094601fe129cb9dfe37f69be894ea93b5e44",
-      "tree": "ca06d58ba95706332d19ccb3c8ba233be0268815",
+      "baseSha": "9b995542ab4a17837dee785439954e43d031b33e",
+      "tip": "d0d71a8f8b5b9933d31c47d15df3c354505170f7",
+      "tree": "3305183cc5222030602d9ab1a8815e288157777d",
       "prs": [
         {
           "number": 1292,
@@ -17,10 +17,9 @@
         {
           "number": 1302,
           "title": "pc: map 1.21.5 team nameTagVisibility and collisionRule to their enum names",
-          "head": "b51a55c42b9552ae8a1b0dbcfcfda8adcf252024",
-          "mergeBase": "81612cde17674eeaf4c716b660c317168e9bd910",
-          "status": "conflict",
-          "note": "data/pc/common/features.json: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "head": "6ebed5b0cd26bca4d1634eb4577726e06f21b7b5",
+          "mergeBase": "5e063fa99cfe8ded065ec6788b66696b7e4ef143",
+          "status": "applied"
         }
       ]
     },
@@ -43,16 +42,16 @@
     "minecraft-data": {
       "repo": "PrismarineJS/node-minecraft-data",
       "base": "master",
-      "baseSha": "308134a8020139d49ceb851c97713ae15b745192",
-      "tip": "308134a8020139d49ceb851c97713ae15b745192",
-      "tree": "6c533865cb45e77a1d7df0689b5d65a5a9d1e73a",
+      "baseSha": "1cdd2d17afbb3f03d97767611a22edb2c1ee6ff6",
+      "tip": "1cdd2d17afbb3f03d97767611a22edb2c1ee6ff6",
+      "tree": "b1c0b7e24b47c98d87b1fec98f0c2030ae095053",
       "prs": []
     },
     "protodef": {
       "repo": "ProtoDef-io/node-protodef",
       "base": "master",
       "baseSha": "7d3956d5a27b0d25048f870a2c9b436d6326ef29",
-      "tip": "dad60bd233348572611d387b0ab74f356611f7c3",
+      "tip": "a069ee9287a1a13811c3b67576f358c7ff742859",
       "tree": "e13103c95b00ddb42605e99999c5c8fe34f43f05",
       "prs": [
         {
@@ -83,8 +82,8 @@
       "repo": "PrismarineJS/node-minecraft-protocol",
       "base": "master",
       "baseSha": "dacf62ef40cc559429537a303ac246ee9cede175",
-      "tip": "8fad793b22c0c9179cb1df35a83a17535735787b",
-      "tree": "0d902967e03309df9c7fddc824b2d3ee2d5bd1e8",
+      "tip": "c9fad25c33a0078e7f106a827b69458af33a7cd5",
+      "tree": "affaa647b18aa2cc20edbdd71f134fa04e4e5526",
       "prs": [
         {
           "number": 1522,
@@ -107,6 +106,13 @@
           "head": "482413749ba0aaec50c9077aea6b3956b4035baa",
           "mergeBase": "0ebdd5120eca8840e3ffd6597cd4e83732b59c9a",
           "status": "applied"
+        },
+        {
+          "number": 1551,
+          "title": "Emit a packetParseFailure diagnostic event for malformed packets",
+          "head": "0d3a634c119ff710462cbae8719b5ff7acf47532",
+          "mergeBase": "dacf62ef40cc559429537a303ac246ee9cede175",
+          "status": "applied"
         }
       ]
     },
@@ -114,7 +120,7 @@
       "repo": "PrismarineJS/prismarine-item",
       "base": "master",
       "baseSha": "2b148a386275a1518f2a30ba354700abd6d1ab19",
-      "tip": "cce5d96c415ac85e2e3f4484a42ee6c12ef9463c",
+      "tip": "8dbdbabba624d4e0c042c963a8b1d2b6e0fa2ab2",
       "tree": "3087e8a6a4f9b23a9e9a73e92a098d69af788c9e",
       "prs": [
         {
@@ -146,8 +152,8 @@
       "repo": "PrismarineJS/mineflayer",
       "base": "master",
       "baseSha": "5a252e6d258882b042e60e21c37d552cdf3b3380",
-      "tip": "e3af2957de8ecd87b42679501a923dec44b66aaf",
-      "tree": "23a8b580e7e231647a2f9ceeb1e32c0d15bfa4c5",
+      "tip": "6978d367d6617e99b8ee30e019b30dbc06e22a5c",
+      "tree": "a3499ba32c2abb245e251c1f259f7097f7d31827",
       "prs": [
         {
           "number": 4021,
@@ -195,8 +201,8 @@
         {
           "number": 4081,
           "title": "fix: give teamRemoved the team that was removed",
-          "head": "8b298b27287fdaa8ece653c4ed8ad1c546edd886",
-          "mergeBase": "91204b2a034f0663b39814771e236bcb7c8f26c8",
+          "head": "4321fc6d25aaeb637165fa9b0e36299507db4492",
+          "mergeBase": "ec4b5a42a24230c0249db8ed2ff24b02e59d7fa8",
           "status": "applied"
         },
         {
@@ -217,7 +223,7 @@
         {
           "number": 4089,
           "title": "Right-click entities like the vanilla client: interact pair, real sneak state, hit point; useOn and mount share the path",
-          "head": "5e6d8b2a358de17b0279258982fefbc692c82be5",
+          "head": "e6fa51dfc865a416c475ec7992a67352ca0018ed",
           "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
@@ -292,7 +298,7 @@
         {
           "number": 4164,
           "title": "Dump packets that fail to parse to a local file",
-          "head": "013a3eb358100bf055b962e525875fcb047f5900",
+          "head": "5fecfb09680310350540c19068c5f11642380946",
           "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
@@ -321,10 +327,9 @@
         {
           "number": 4178,
           "title": "ci: halve CI wall time",
-          "head": "baed46cd7c7f90ed46c36384fba7dbf48a4124dd",
-          "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
-          "status": "conflict",
-          "note": ".github/workflows/ci.yml: model error: 429 Insufficient balance or no resource package. Please recharge."
+          "head": "74846ee0415510c628706053552c6e3148d9d8e0",
+          "mergeBase": "5a252e6d258882b042e60e21c37d552cdf3b3380",
+          "status": "applied"
         },
         {
           "number": 4181,
@@ -344,7 +349,7 @@
         {
           "number": 4184,
           "title": "fix: read set_cooldown's cooldown group on 1.21.3+",
-          "head": "bc60f0b1812ee1db29c037099ce89d40f1293f12",
+          "head": "20d5dd6c1ddf5343fe8ff86569566d172f61f7a2",
           "mergeBase": "7b4bb8d2b56be9cdb832474af873acd37e609746",
           "status": "applied"
         },
@@ -375,17 +380,10 @@
     "mineflayer-pathfinder": {
       "repo": "PrismarineJS/mineflayer-pathfinder",
       "base": "master",
-      "baseSha": "d773d15ff1bb271090122b3c7106a519a68bbbd9",
-      "tip": "98a2678e66c38803a2b623efe0b17665ed5edf7f",
+      "baseSha": "b07a419a4181d242bc4b9f8648a4f624e587c18f",
+      "tip": "b07a419a4181d242bc4b9f8648a4f624e587c18f",
       "tree": "4db3f117df97510078c9b7614d1f5f903a0c239b",
       "prs": [
-        {
-          "number": 376,
-          "title": "createHuman: cap the wait for the head to settle",
-          "head": "3b54852b06c7ed382c60efe5af626ca073545959",
-          "mergeBase": "d773d15ff1bb271090122b3c7106a519a68bbbd9",
-          "status": "applied"
-        },
         {
           "number": 382,
           "title": "createHuman: bridge over gaps the way a player does",
@@ -400,8 +398,8 @@
       "repo": "PrismarineJS/prismarine-viewer",
       "base": "master",
       "baseSha": "8a3ce60b40f1ff7a26422a8f8904fbedbe808688",
-      "tip": "3ca9ad80ddfa90650d35aa0682ddc7c746600555",
-      "tree": "07cd176795616f2bd1eafb785c9abe8303694bf5",
+      "tip": "859a4068393170d598734bf38a25d7264e57673f",
+      "tree": "1db23a99c12230ebab44ea78651d4781631ee940",
       "prs": [
         {
           "number": 488,
@@ -414,7 +412,7 @@
         {
           "number": 514,
           "title": "Draw nothing for an invisible entity, like the vanilla client",
-          "head": "31d63d1d40947c4b0082a5e1395cc8f1e3c58285",
+          "head": "206f5b591c12a5e3bed1769998c6a293ed84f310",
           "mergeBase": "8a3ce60b40f1ff7a26422a8f8904fbedbe808688",
           "status": "applied"
         }
